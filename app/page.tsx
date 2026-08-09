@@ -78,9 +78,9 @@ const DEFAULT_PLAYER: Player = {
 
 const AGE_BANDS: Array<{ value: AgeBand; label: string; title: string; note: string; seconds: number | null }> = [
   { value: "7-9", label: "AGES 7–9", title: "Play & Discover", note: "More visuals, fewer choices, and no timer.", seconds: null },
-  { value: "10-12", label: "AGES 10–12", title: "Build the Basics", note: "Clear explanations and game-like decisions.", seconds: 40 },
-  { value: "13-15", label: "AGES 13–15", title: "Read the Game", note: "Full scenarios, strategy, and position reads.", seconds: 35 },
-  { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Faster pacing and deeper tactical language.", seconds: 30 },
+  { value: "10-12", label: "AGES 10–12", title: "Build the Basics", note: "Clear explanations and game-like decisions.", seconds: 60 },
+  { value: "13-15", label: "AGES 13–15", title: "Read the Game", note: "Full scenarios, strategy, and position reads.", seconds: 45 },
+  { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Faster pacing and deeper tactical language.", seconds: 35 },
   { value: "18+", label: "AGES 18+", title: "Full Sports IQ", note: "Complete detail for adults, athletes, and coaches.", seconds: 30 },
 ];
 

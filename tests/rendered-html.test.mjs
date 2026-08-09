@@ -75,6 +75,10 @@ test("age paths meaningfully adapt the learning experience", async () => {
   }
   assert.match(source, /fewer choices, and no timer/);
   assert.match(source, /seconds: null/);
+  assert.match(source, /value: "10-12"[\s\S]*?seconds: 60/);
+  assert.match(source, /value: "13-15"[\s\S]*?seconds: 45/);
+  assert.match(source, /value: "16-17"[\s\S]*?seconds: 35/);
+  assert.match(source, /value: "18\+"[\s\S]*?seconds: 30/);
   assert.match(source, /challengeSeconds !== null/);
   assert.match(source, /options\.length > 3/);
   assert.match(source, /challengeSeconds/);
