@@ -41,6 +41,7 @@ export type Sport = {
   color: string;
   softColor: string;
   variants: string[];
+  pathNote?: string;
   positions: Position[];
   sample: {
     teamSize: string;
@@ -63,11 +64,12 @@ export const LEVELS = ["Rookie", "Starter", "Playmaker", "All-Star", "Elite", "P
 export const SPORTS: Sport[] = [
   {
     id: "football",
-    name: "American Football",
-    mark: "FB",
+    name: "Tackle Football",
+    mark: "TF",
     color: "#2f6f68",
     softColor: "#dcebe6",
-    variants: ["General", "Men’s", "Women’s / Flag"],
+    variants: ["Women’s Tackle (WNFC)", "Men’s Tackle", "Youth Tackle"],
+    pathNote: "Eleven-on-eleven tackle football with full offensive, defensive, and special-teams position rooms—including the women’s tackle game represented by the WNFC.",
     positions: [
       { name: "Quarterback", group: "Offense", focus: "read the defense and distribute the ball" },
       { name: "Running Back", group: "Offense", focus: "press the run track and identify the open crease" },
@@ -91,6 +93,25 @@ export const SPORTS: Sport[] = [
       { name: "Returner", group: "Special Teams", focus: "secure the ball and read the return leverage" },
     ],
     sample: { teamSize: "11 players per team on the field", format: "Four 15-minute quarters", score: "Touchdowns are worth 6 points", field: "A 100-yard field plus two end zones" },
+  },
+  {
+    id: "flag-football",
+    name: "Flag Football",
+    mark: "FF",
+    color: "#59739a",
+    softColor: "#e0e6ef",
+    variants: ["Women’s Flag", "Men’s Flag", "Coed Flag", "5v5", "7v7"],
+    pathNote: "A distinct non-tackle discipline with its own rulesets, field spacing, eligible-player concepts, positions, and strategy.",
+    positions: [
+      { name: "Quarterback", group: "Offense", focus: "read space quickly and deliver an accurate on-time throw" },
+      { name: "Center / Snapper", group: "Offense", focus: "start the play cleanly and release into the pattern when eligible" },
+      { name: "Receiver", group: "Offense", focus: "create separation and settle in open space" },
+      { name: "Ball Carrier", group: "Offense", focus: "protect the flag and attack leverage without initiating contact" },
+      { name: "Rusher", group: "Defense", focus: "time the rush and pressure the quarterback under the ruleset" },
+      { name: "Short-Zone Defender", group: "Defense", focus: "close throwing windows and break safely on the ball" },
+      { name: "Deep Defender", group: "Defense", focus: "protect vertical space and prevent explosive plays" },
+    ],
+    sample: { teamSize: "5 or 7 players per team in common rulesets", format: "Usually two halves, with timing set by the league", score: "Touchdowns are commonly worth 6 points", field: "A shortened football field with end zones and no tackling" },
   },
   {
     id: "basketball",

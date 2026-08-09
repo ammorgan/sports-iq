@@ -38,7 +38,7 @@ test("client includes the complete first-run learning experience", async () => {
 test("content model covers the requested sports and per-sport pathways", async () => {
   const source = await readFile(new URL("../app/learning-data.ts", import.meta.url), "utf8");
   for (const sport of [
-    "American Football", "Basketball", "Soccer", "Volleyball", "Baseball", "Softball",
+    "Tackle Football", "Flag Football", "Basketball", "Soccer", "Volleyball", "Baseball", "Softball",
     "Ice Hockey", "Lacrosse", "Rugby", "Field Hockey", "Water Polo", "Cricket",
   ]) assert.match(source, new RegExp(`name: "${sport}"`));
 
@@ -53,6 +53,9 @@ test("content model covers the requested sports and per-sport pathways", async (
   assert.match(source, /type: "ordering"/);
   assert.match(source, /type: "multi"/);
   assert.match(source, /type: "hotspot"/);
+  assert.match(source, /Women’s Tackle \(WNFC\)/);
+  assert.match(source, /id: "flag-football"/);
+  assert.match(source, /distinct non-tackle discipline/);
 });
 
 test("football contains every major position group from the product brief", async () => {

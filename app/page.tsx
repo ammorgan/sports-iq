@@ -131,7 +131,14 @@ export default function Home() {
   useEffect(() => {
     const saved = window.localStorage.getItem(PLAYER_KEY);
     if (saved) {
-      try { setPlayer({ ...DEFAULT_PLAYER, ...JSON.parse(saved) }); } catch { /* use a fresh profile */ }
+      try {
+        const parsed = JSON.parse(saved) as Player;
+        const football = parsed.sports?.football;
+        if (football && (football.variant === "Women’s / Flag" || football.variant === "General")) {
+          football.variant = "Women’s Tackle (WNFC)";
+        }
+        setPlayer({ ...DEFAULT_PLAYER, ...parsed });
+      } catch { /* use a fresh profile */ }
     }
     setHydrated(true);
   }, []);
@@ -397,7 +404,7 @@ export default function Home() {
           <span className="eyebrow">PERSONALIZE YOUR PATH</span>
           <h1>What is your experience with <em>{selectedSport.name}</em>?</h1>
           <p>Your level is stored for this sport only. You can be an expert here and a rookie somewhere else.</p>
-          <div className="variant-picker" aria-label="Sport format">
+          <div className="variant-picker" aria-label="Playing format or division">
             {selectedSport.variants.map((variant) => <button key={variant} className={variantChoice === variant ? "active" : ""} onClick={() => setVariantChoice(variant)} aria-pressed={variantChoice === variant}>{variant}</button>)}
           </div>
           <div className="experience-list">
@@ -502,7 +509,7 @@ export default function Home() {
         <AppHeader player={player} active="learn" onNavigate={(tab) => { setDashboardTab(tab); setScreen("dashboard"); }} onHome={navigateHome} onToggleTheme={() => setPlayer((current) => ({ ...current, darkMode: !current.darkMode }))} />
         <section className="sport-hero" style={{ "--sport-color": selectedSport.color, "--sport-soft": selectedSport.softColor } as React.CSSProperties}>
           <button className="back-link" onClick={navigateHome}>← All sports</button>
-          <div className="sport-title-row"><div className="sport-mark sport-mark--xl">{selectedSport.mark}</div><div><span>{sportProgress.variant ?? selectedSport.variants[0]} PATH</span><h1>{selectedSport.name}</h1><p>{sportProgress.experience === "new" ? "Start with the fundamentals, then unlock position-specific reads." : "Your placement opens Rookie and position-specific learning."}</p></div></div>
+          <div className="sport-title-row"><div className="sport-mark sport-mark--xl">{selectedSport.mark}</div><div><span>{sportProgress.variant ?? selectedSport.variants[0]} PATH</span><h1>{selectedSport.name}</h1><p>{selectedSport.pathNote ?? (sportProgress.experience === "new" ? "Start with the fundamentals, then unlock position-specific reads." : "Your placement opens Rookie and position-specific learning.")}</p></div></div>
           <div className="sport-summary"><div><strong>{progressPercent}%</strong><span>SPORT PROGRESS</span></div><div><strong>{sportProgress.xp}</strong><span>XP EARNED</span></div><div><strong>{LEVELS[Math.min(5, Math.floor(sportProgress.completedModules.length / 3))]}</strong><span>CURRENT LEVEL</span></div></div>
         </section>
         <section className="path-content">

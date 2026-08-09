@@ -6,7 +6,8 @@ short interactive modules rather than static lessons or generic trivia.
 
 ## Current product slice
 
-- 12-sport learning hub with independent experience placement per sport
+- 13-path learning hub with independent experience placement per sport and discipline
+- Separate tackle-football and flag-football paths, including women’s tackle represented by the WNFC
 - General Sport IQ and Position IQ pathways
 - Six-level progression model from Rookie through Pro
 - Football Fundamentals and Rookie sample modules
