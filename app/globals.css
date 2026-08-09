@@ -349,6 +349,19 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 .age-picker button.active { border-color: var(--teal); background: var(--teal); color: white; box-shadow: 3px 3px 0 color-mix(in srgb,var(--teal) 28%,transparent); transform: translate(-1px,-1px); }
 .age-picker button.active span { color: rgba(255,255,255,.75); }
 .age-picker > p { min-height: 1.2em; margin: 9px 0 0; color: var(--muted); font-family: Georgia,serif; font-size: 11px; }
+.age-gate-screen .simple-header > span { color: var(--muted); font-size: 8px; font-weight: 950; letter-spacing: .12em; }
+.age-confirm-panel { width: min(980px,calc(100% - 40px)); margin: auto; padding: clamp(45px,7vh,80px) 0 75px; }
+.age-confirm-panel h1 { margin: 17px 0; font-size: clamp(52px,7vw,92px); font-weight: 950; letter-spacing: -.07em; line-height: .88; }
+.age-confirm-panel h1 em { color: var(--teal); font-style: normal; }
+.age-confirm-panel > p { max-width: 700px; color: var(--muted); font-family: Georgia,serif; font-size: 16px; line-height: 1.5; }
+.age-confirm-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin: 32px 0 28px; }
+.age-confirm-grid button { position: relative; display: flex; min-height: 185px; flex-direction: column; padding: 16px; border: 1px solid var(--line); background: var(--surface); text-align: left; cursor: pointer; transition: 150ms ease; }
+.age-confirm-grid button > span { color: var(--teal); font-size: 8px; font-weight: 950; letter-spacing: .1em; }
+.age-confirm-grid button > strong { margin: 20px 0 8px; font-size: 19px; letter-spacing: -.03em; }
+.age-confirm-grid button > small { color: var(--muted); font-family: Georgia,serif; font-size: 11px; line-height: 1.4; }
+.age-confirm-grid button > i { display: grid; width: 29px; height: 29px; margin-top: auto; place-items: center; border-radius: 50%; background: var(--surface-2); color: var(--teal); font-style: normal; font-weight: 950; }
+.age-confirm-grid button.active { border-color: var(--teal); background: color-mix(in srgb,var(--teal) 6%,var(--surface)); box-shadow: 5px 5px 0 color-mix(in srgb,var(--teal) 25%,transparent); transform: translate(-2px,-2px); }
+.age-confirm-grid button.active > i { background: var(--teal); color: white; }
 .quick-play-box { display: grid; grid-template-columns: 1fr minmax(135px,auto) auto; gap: 9px; align-items: center; max-width: 650px; margin-top: 20px; padding: 12px; border: 1px solid var(--line); background: color-mix(in srgb,var(--gold) 9%,var(--surface)); }
 .quick-play-box > div { display: flex; flex-direction: column; gap: 3px; }
 .quick-play-box > div span { color: var(--teal); font-size: 7px; font-weight: 950; letter-spacing: .12em; }
@@ -462,6 +475,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
   .position-group > div { grid-template-columns: repeat(3,1fr); }
   .age-picker > div { grid-template-columns: repeat(3,1fr); }
   .title-locker > div { grid-template-columns: repeat(3,1fr); }
+  .age-confirm-grid { grid-template-columns: repeat(3,1fr); }
 }
 
 @media (max-width: 780px) {
@@ -487,6 +501,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
   .daily-spotlight { grid-template-columns: auto 1fr; }
   .daily-spotlight .primary-button { grid-column: 1/-1; width: 100%; }
   .rank-track span { display: none; }
+  .age-confirm-grid { grid-template-columns: repeat(2,1fr); }
 }
 
 @media (max-width: 560px) {
@@ -499,6 +514,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
   .welcome-live { width: auto; }
   .age-picker > div { display: flex; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x mandatory; }
   .age-picker button { min-width: 125px; scroll-snap-align: start; }
+  .age-confirm-grid { grid-template-columns: 1fr; }
+  .age-confirm-grid button { min-height: 135px; }
   .quick-play-box { grid-template-columns: 1fr; }
   .quick-play-box > div { grid-column: auto; }
   .header-stats .xp-pill { display: none; }

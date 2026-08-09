@@ -44,6 +44,7 @@ type Player = {
   avatarMark: string;
   accentColor: string;
   ageBand: AgeBand;
+  ageBandConfirmed: boolean;
 };
 type SessionResult = { conceptId: string; correct: boolean; remediation: boolean };
 type ModuleSummary = {
@@ -72,6 +73,7 @@ const DEFAULT_PLAYER: Player = {
   avatarMark: "★",
   accentColor: "#3b7f79",
   ageBand: "10-12",
+  ageBandConfirmed: false,
 };
 
 const AGE_BANDS: Array<{ value: AgeBand; label: string; title: string; note: string; seconds: number }> = [
@@ -208,6 +210,7 @@ export default function Home() {
         if (football && (football.variant === "Women’s / Flag" || football.variant === "General")) {
           football.variant = "Women’s Tackle (WNFC)";
         }
+        setAgeChoice(parsed.ageBand ?? "10-12");
         setPlayer({ ...DEFAULT_PLAYER, ...parsed });
       } catch { /* use a fresh profile */ }
     }
@@ -349,6 +352,7 @@ export default function Home() {
       ...current,
       profileName: profileDraft.trim() || "Player",
       ageBand: ageChoice,
+      ageBandConfirmed: true,
       sports: {
         ...current.sports,
         [sport.id]: { ...(current.sports[sport.id] ?? emptySportProgress()), experience: "new", variant: sport.variants[0] },
@@ -487,7 +491,7 @@ export default function Home() {
           </fieldset>
           <form onSubmit={(event) => {
             event.preventDefault();
-            if (profileDraft.trim()) setPlayer((current) => ({ ...current, profileName: profileDraft.trim(), ageBand: ageChoice }));
+            if (profileDraft.trim()) setPlayer((current) => ({ ...current, profileName: profileDraft.trim(), ageBand: ageChoice, ageBandConfirmed: true }));
           }}>
             <label htmlFor="player-name">WHAT SHOULD WE CALL YOU?</label>
             <div><input id="player-name" value={profileDraft} onChange={(event) => setProfileDraft(event.target.value)} placeholder="Your first name" autoFocus /><button type="submit" disabled={!profileDraft.trim()}>Build my playbook <span>→</span></button></div>
@@ -508,6 +512,21 @@ export default function Home() {
           <div className="welcome-step"><b>02</b><p><strong>Make the read</strong><small>Learn through decisions</small></p></div>
           <div className="welcome-step"><b>03</b><p><strong>Master the concept</strong><small>Build real game IQ</small></p></div>
         </aside>
+      </main>
+    );
+  }
+
+  if (!player.ageBandConfirmed) {
+    return (
+      <main className={`onboarding-screen age-gate-screen ${player.darkMode ? "dark" : ""}`}>
+        <header className="simple-header"><Logo compact /><span>ONE-TIME PLAYBOOK UPDATE</span></header>
+        <section className="age-confirm-panel">
+          <span className="eyebrow"><i /> BUILT FOR HOW YOU LEARN</span>
+          <h1>Choose your<br /><em>age path.</em></h1>
+          <p>This changes pacing, visuals, reading load, and answer complexity. It does not limit which sports or skill levels you can choose.</p>
+          <div className="age-confirm-grid">{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageChoice === band.value ? "active" : ""} onClick={() => setAgeChoice(band.value)}><span>{band.label}</span><strong>{band.title}</strong><small>{band.note}</small><i>{ageChoice === band.value ? "✓" : "→"}</i></button>)}</div>
+          <button className="primary-button" onClick={() => setPlayer((current) => ({ ...current, ageBand: ageChoice, ageBandConfirmed: true }))}>Set my age path <span>→</span></button>
+        </section>
       </main>
     );
   }
@@ -675,8 +694,8 @@ export default function Home() {
       }} />}
       {dashboardTab === "progress" && <ProgressDashboard player={player} strongest={strongest} weakest={weakest} onChooseSport={chooseSport} />}
       {dashboardTab === "badges" && <BadgesDashboard player={player} />}
-      {dashboardTab === "profile" && <ProfileDashboard player={player} onUpdateIdentity={(updates) => setPlayer((current) => ({ ...current, ...updates }))} onReset={() => {
-        if (window.confirm("Reset all Sports IQ progress saved on this device? This cannot be undone.")) setPlayer({ ...DEFAULT_PLAYER, profileName: player.profileName, darkMode: player.darkMode, soundOn: player.soundOn, avatarMark: player.avatarMark, accentColor: player.accentColor, ageBand: player.ageBand });
+      {dashboardTab === "profile" && <ProfileDashboard player={player} onUpdateIdentity={(updates) => setPlayer((current) => ({ ...current, ...updates, ageBandConfirmed: true }))} onReset={() => {
+        if (window.confirm("Reset all Sports IQ progress saved on this device? This cannot be undone.")) setPlayer({ ...DEFAULT_PLAYER, profileName: player.profileName, darkMode: player.darkMode, soundOn: player.soundOn, avatarMark: player.avatarMark, accentColor: player.accentColor, ageBand: player.ageBand, ageBandConfirmed: true });
       }} />}
     </main>
   );

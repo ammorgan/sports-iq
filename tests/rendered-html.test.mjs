@@ -80,4 +80,6 @@ test("age paths meaningfully adapt the learning experience", async () => {
   assert.match(source, /PLAYER_RANKS/);
   assert.match(source, /avatarMark/);
   assert.match(source, /soundOn/);
+  assert.match(source, /ageBandConfirmed/);
+  assert.match(source, /ONE-TIME PLAYBOOK UPDATE/);
 });
