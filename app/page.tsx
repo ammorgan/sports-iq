@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BADGES,
   buildPositionModule,
@@ -83,6 +83,17 @@ const AGE_BANDS: Array<{ value: AgeBand; label: string; title: string; note: str
   { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Faster pacing and deeper tactical language.", seconds: 35 },
   { value: "18+", label: "AGES 18+", title: "Full Sports IQ", note: "Complete detail for adults, athletes, and coaches.", seconds: 30 },
 ];
+
+const YOUNG_EXPERIENCE_OPTIONS: typeof EXPERIENCE_OPTIONS = [
+  { value: "new", title: "I’m just starting", note: "Teach me the basics step by step." },
+  { value: "basics", title: "I know a little", note: "I know some rules and want to learn more." },
+  { value: "competitive", title: "I play or coach", note: "Start me with real game situations." },
+];
+
+function timeLimitForAge(ageBand: AgeBand) {
+  const band = AGE_BANDS.find((item) => item.value === ageBand);
+  return band ? band.seconds : 35;
+}
 
 const AVATAR_MARKS = ["★", "⚡", "◆", "↑", "23", "IQ"];
 const PLAYER_COLORS = ["#3b7f79", "#b85f45", "#59739a", "#6b64a2", "#9a6c36", "#4b7a58"];
@@ -197,24 +208,29 @@ export default function Home() {
   const [missedConcepts, setMissedConcepts] = useState<string[]>([]);
   const [recoveredConcepts, setRecoveredConcepts] = useState<string[]>([]);
   const [summary, setSummary] = useState<ModuleSummary | null>(null);
-  const [challengeSeconds, setChallengeSeconds] = useState<number | null>(30);
+  const [challengeSeconds, setChallengeSeconds] = useState<number | null>(null);
+  const [hintVisible, setHintVisible] = useState(false);
   const [quickSportId, setQuickSportId] = useState("football");
   const [ageChoice, setAgeChoice] = useState<AgeBand>("10-12");
+  const feedbackRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(PLAYER_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as Player;
-        const football = parsed.sports?.football;
-        if (football && (football.variant === "Women’s / Flag" || football.variant === "General")) {
-          football.variant = "Women’s Tackle (WNFC)";
-        }
-        setAgeChoice(parsed.ageBand ?? "10-12");
-        setPlayer({ ...DEFAULT_PLAYER, ...parsed });
-      } catch { /* use a fresh profile */ }
-    }
-    setHydrated(true);
+    const hydrationTimer = window.setTimeout(() => {
+      const saved = window.localStorage.getItem(PLAYER_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as Player;
+          const football = parsed.sports?.football;
+          if (football && (football.variant === "Women’s / Flag" || football.variant === "General")) {
+            football.variant = "Women’s Tackle (WNFC)";
+          }
+          setAgeChoice(parsed.ageBand ?? "10-12");
+          setPlayer({ ...DEFAULT_PLAYER, ...parsed });
+        } catch { /* use a fresh profile */ }
+      }
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(hydrationTimer);
   }, []);
 
   useEffect(() => {
@@ -223,12 +239,23 @@ export default function Home() {
 
   useEffect(() => {
     if (screen !== "module" || feedback) return;
-    const timeLimit = AGE_BANDS.find((band) => band.value === player.ageBand)?.seconds ?? 35;
-    setChallengeSeconds(timeLimit);
-    if (timeLimit === null) return;
+    const timeLimit = timeLimitForAge(player.ageBand);
+    const timerStart = window.setTimeout(() => setChallengeSeconds(timeLimit), 0);
+    if (timeLimit === null) return () => window.clearTimeout(timerStart);
     const timer = window.setInterval(() => setChallengeSeconds((seconds) => seconds === null ? null : Math.max(0, seconds - 1)), 1000);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearTimeout(timerStart);
+      window.clearInterval(timer);
+    };
   }, [screen, challengeIndex, feedback, player.ageBand]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [screen, dashboardTab, challengeIndex, selectedSportId, player.profileName, player.ageBandConfirmed]);
+
+  useEffect(() => {
+    if (feedback) feedbackRef.current?.scrollIntoView({ block: "nearest", behavior: "auto" });
+  }, [feedback]);
 
   const selectedSport = SPORTS.find((sport) => sport.id === selectedSportId) ?? SPORTS[0];
   const sportProgress = player.sports[selectedSport.id] ?? emptySportProgress();
@@ -267,16 +294,25 @@ export default function Home() {
     setScreen("sport");
   };
 
-  const prepareChallenge = (challenge: Challenge, effectiveAge = player.ageBand): Challenge => {
+  const prepareChallenge = useCallback((challenge: Challenge, effectiveAge = player.ageBand): Challenge => {
     let options = challenge.options;
     if (effectiveAge === "7-9" && !["multi", "ordering"].includes(challenge.type) && options.length > 3) {
       const expected = Array.isArray(challenge.correct) ? challenge.correct : [challenge.correct];
       const distractors = shuffle(options.filter((option) => !expected.includes(option))).slice(0, Math.max(0, 3 - expected.length));
       options = [...expected, ...distractors];
     }
-    const explanation = effectiveAge === "7-9" ? challenge.explanation.split(/(?<=[.!?])\s/)[0] : challenge.explanation;
-    return { ...challenge, explanation, options: shuffle(options) };
-  };
+    const isYoungPlayer = effectiveAge === "7-9";
+    const explanation = isYoungPlayer
+      ? challenge.youngExplanation ?? challenge.explanation.split(/(?<=[.!?])\s/)[0]
+      : challenge.explanation;
+    return {
+      ...challenge,
+      prompt: isYoungPlayer ? challenge.youngPrompt ?? challenge.prompt : challenge.prompt,
+      explanation,
+      hint: isYoungPlayer ? challenge.youngHint ?? challenge.hint : challenge.hint,
+      options: shuffle(options),
+    };
+  }, [player.ageBand]);
 
   const startModule = useCallback((module: LearningModule, ageOverride?: AgeBand) => {
     const mastery = player.sports[module.sportId]?.mastery ?? {};
@@ -294,6 +330,7 @@ export default function Home() {
     setChallengeIndex(0);
     setSelectedAnswers([]);
     setFeedback(null);
+    setHintVisible(false);
     setSessionXp(0);
     setSessionMistakes(0);
     setSessionStreak(0);
@@ -302,7 +339,7 @@ export default function Home() {
     setRecoveredConcepts([]);
     setSummary(null);
     setScreen("module");
-  }, [player.sports, player.ageBand]);
+  }, [player.sports, player.ageBand, prepareChallenge]);
 
   const checkAnswer = (answers: string[]) => {
     if (!currentChallenge || feedback) return;
@@ -345,7 +382,6 @@ export default function Home() {
       return;
     }
     setSelectedAnswers([answer]);
-    checkAnswer([answer]);
   };
 
   const startQuickPlay = () => {
@@ -456,6 +492,7 @@ export default function Home() {
     setChallengeIndex((index) => index + 1);
     setSelectedAnswers([]);
     setFeedback(null);
+    setHintVisible(false);
   };
 
   const currentSportModules = moduleList(selectedSport);
@@ -463,11 +500,9 @@ export default function Home() {
     .every((module) => sportProgress.completedModules.includes(module.id));
   const positionsUnlocked = sportProgress.experience !== "new" || footballFundamentalsDone || selectedSport.id !== "football" && sportProgress.completedModules.length > 0;
 
-  const nextModule = useMemo(() => {
-    const modules = moduleList(selectedSport);
-    if (sportProgress.experience === "new") return modules.find((module) => !sportProgress.completedModules.includes(module.id));
-    return modules.find((module) => module.level >= 1 && !sportProgress.completedModules.includes(module.id)) ?? modules[0];
-  }, [selectedSport, sportProgress.completedModules, sportProgress.experience]);
+  const nextModule = sportProgress.experience === "new"
+    ? currentSportModules.find((learningModule) => !sportProgress.completedModules.includes(learningModule.id))
+    : currentSportModules.find((learningModule) => learningModule.level >= 1 && !sportProgress.completedModules.includes(learningModule.id)) ?? currentSportModules[0];
 
   const allMastery = Object.entries(player.sports).flatMap(([sportId, progress]) =>
     Object.entries(progress.mastery).map(([conceptId, mastery]) => ({ sportId, conceptId, mastery })));
@@ -496,11 +531,11 @@ export default function Home() {
             if (profileDraft.trim()) setPlayer((current) => ({ ...current, profileName: profileDraft.trim(), ageBand: ageChoice, ageBandConfirmed: true }));
           }}>
             <label htmlFor="player-name">WHAT SHOULD WE CALL YOU?</label>
-            <div><input id="player-name" value={profileDraft} onChange={(event) => setProfileDraft(event.target.value)} placeholder="Your first name" autoFocus /><button type="submit" disabled={!profileDraft.trim()}>Build my playbook <span>→</span></button></div>
+            <div><input id="player-name" value={profileDraft} onChange={(event) => setProfileDraft(event.target.value)} placeholder="Your first name" /><button type="submit" disabled={!profileDraft.trim()}>Build my playbook <span>→</span></button></div>
           </form>
           <small>No account required for this preview. Progress saves on this device.</small>
           <div className="quick-play-box">
-            <div><span>WANT TO PLAY FIRST?</span><strong>Jump into a 60-second sports challenge.</strong></div>
+            <div><span>WANT TO PLAY FIRST?</span><strong>{timeLimitForAge(ageChoice) === null ? "Jump into a relaxed sports challenge—no timer." : `Jump into a ${timeLimitForAge(ageChoice)}-second sports challenge.`}</strong></div>
             <select value={quickSportId} onChange={(event) => setQuickSportId(event.target.value)} aria-label="Choose a Quick Play sport">
               {SPORTS.map((sport) => <option key={sport.id} value={sport.id}>{sport.name}</option>)}
             </select>
@@ -526,7 +561,7 @@ export default function Home() {
           <span className="eyebrow"><i /> BUILT FOR HOW YOU LEARN</span>
           <h1>Choose your<br /><em>age path.</em></h1>
           <p>This changes pacing, visuals, reading load, and answer complexity. It does not limit which sports or skill levels you can choose.</p>
-          <div className="age-confirm-grid">{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageChoice === band.value ? "active" : ""} onClick={() => setAgeChoice(band.value)}><span>{band.label}</span><strong>{band.title}</strong><small>{band.note}</small><i>{ageChoice === band.value ? "✓" : "→"}</i></button>)}</div>
+          <div className="age-confirm-grid">{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageChoice === band.value ? "active" : ""} onClick={() => setAgeChoice(band.value)} aria-pressed={ageChoice === band.value}><span>{band.label}</span><strong>{band.title}</strong><small>{band.note}</small><i>{ageChoice === band.value ? "✓" : "→"}</i></button>)}</div>
           <button className="primary-button" onClick={() => setPlayer((current) => ({ ...current, ageBand: ageChoice, ageBandConfirmed: true }))}>Set my age path <span>→</span></button>
         </section>
       </main>
@@ -547,7 +582,7 @@ export default function Home() {
             {selectedSport.variants.map((variant) => <button key={variant} className={variantChoice === variant ? "active" : ""} onClick={() => setVariantChoice(variant)} aria-pressed={variantChoice === variant}>{variant}</button>)}
           </div>
           <div className="experience-list">
-            {EXPERIENCE_OPTIONS.map((option, index) => (
+            {(player.ageBand === "7-9" ? YOUNG_EXPERIENCE_OPTIONS : EXPERIENCE_OPTIONS).map((option, index) => (
               <button key={option.value} className={experienceChoice === option.value ? "active" : ""} onClick={() => setExperienceChoice(option.value)} aria-pressed={experienceChoice === option.value}>
                 <span>{String(index + 1).padStart(2, "0")}</span><div><strong>{option.title}</strong><small>{option.note}</small></div><i>✓</i>
               </button>
@@ -563,25 +598,36 @@ export default function Home() {
     const progress = ((challengeIndex + (feedback ? 1 : 0)) / queue.length) * 100;
     const isCheckable = currentChallenge.type === "multi"
       ? selectedAnswers.length > 0
-      : currentChallenge.type === "ordering" ? selectedAnswers.length === currentChallenge.options.length : false;
+      : currentChallenge.type === "ordering" ? selectedAnswers.length === currentChallenge.options.length : selectedAnswers.length === 1;
+    const answerInstruction = currentChallenge.type === "multi"
+      ? "Choose every answer that fits, then check your answer."
+      : currentChallenge.type === "ordering"
+        ? "Choose each answer in the right order, then check your answer."
+        : "Choose one answer, then check your answer.";
+    const exitModule = () => {
+      const hasSessionWork = challengeIndex > 0 || !!feedback || selectedAnswers.length > 0;
+      if (!hasSessionWork || window.confirm("Leave this lesson? Your answers in this session won’t be saved.")) setScreen("sport");
+    };
     return (
       <main className={`lesson-shell ${player.darkMode ? "dark" : ""}`}>
         <header className="lesson-header">
-          <button className="brand-button" onClick={() => setScreen("sport")} aria-label="Exit module"><Logo compact /></button>
+          <button className="lesson-exit-button" onClick={exitModule}><span>←</span> Exit lesson</button>
           <div className="lesson-progress"><span style={{ width: `${progress}%` }} /></div>
           <div className="lesson-counters"><span>XP <strong>{sessionXp}</strong></span><span>STREAK <strong>{sessionStreak}×</strong></span><span>MISTAKES <strong>{sessionMistakes}</strong></span></div>
         </header>
-        <section className="challenge-stage" aria-live="polite">
+        <section className="challenge-stage">
           {feedback?.correct && <div className="xp-burst" key={`xp-${challengeIndex}`}>+{currentChallenge.xp + Math.min(Math.max(0, sessionStreak - 1) * 2, 10)} XP</div>}
           <div className="challenge-heading">
             <div><span>{currentChallenge.label}</span><small>{activeModule.title} · {challengeIndex + 1} of {queue.length}</small></div>
-            <div className="challenge-tools">{challengeSeconds !== null && <span className={`round-clock ${challengeSeconds <= 10 ? "round-clock--low" : ""}`}>{challengeSeconds}<small>SEC</small></span>}{sessionStreak >= 2 && <strong className="combo-chip">{sessionStreak}× COMBO</strong>}<button className="hint-button" onClick={() => window.alert(currentChallenge.hint ?? "Look for the option that best supports the team’s immediate objective.")}>Need a hint?</button></div>
+            <div className="challenge-tools">{challengeSeconds !== null && <span className={`round-clock ${challengeSeconds <= 10 ? "round-clock--low" : ""}`} aria-label={`${challengeSeconds} seconds remaining`}>{challengeSeconds}<small>SEC</small></span>}{sessionStreak >= 2 && <strong className="combo-chip">{sessionStreak}× COMBO</strong>}<button className="hint-button" onClick={() => setHintVisible((visible) => !visible)} aria-expanded={hintVisible} aria-controls="challenge-hint">{hintVisible ? "Hide hint" : "Need a hint?"}</button></div>
           </div>
+          {hintVisible && <div className="hint-panel" id="challenge-hint" role="note"><strong>COACH’S TIP</strong><span>{currentChallenge.hint ?? "Look for the option that best supports the team’s immediate objective."}</span></div>}
           <h1>{currentChallenge.prompt}</h1>
 
           {(player.ageBand === "7-9" || currentChallenge.type === "hotspot" || currentChallenge.type === "scenario") && <div className="play-visual" aria-label={`Animated ${activeModule.sportId} game situation`}><span>READ THE SPACE</span><div className="play-zone">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}<b /></div><small>Watch the movement, then make the call.</small></div>}
 
-          <div className={`challenge-options challenge-options--${currentChallenge.type}`} role="group" aria-label="Answer choices">
+          <p className="answer-instruction" id="answer-instruction">{answerInstruction}</p>
+          <div className={`challenge-options challenge-options--${currentChallenge.type}`} role="group" aria-label="Answer choices" aria-describedby="answer-instruction">
             {currentChallenge.options.map((option, index) => {
               const selected = selectedAnswers.includes(option);
               const expected = Array.isArray(currentChallenge.correct) ? currentChallenge.correct : [currentChallenge.correct];
@@ -595,15 +641,15 @@ export default function Home() {
             })}
           </div>
 
-          {!feedback && (currentChallenge.type === "multi" || currentChallenge.type === "ordering") && (
+          {!feedback && (
             <div className="check-row">
               {currentChallenge.type === "ordering" && <button className="text-button" onClick={() => setSelectedAnswers([])}>Reset order</button>}
-              <button className="primary-button primary-button--small" disabled={!isCheckable} onClick={() => checkAnswer(selectedAnswers)}>Check my read <span>→</span></button>
+              <button className="primary-button primary-button--small" disabled={!isCheckable} onClick={() => checkAnswer(selectedAnswers)}>Check my answer <span>→</span></button>
             </div>
           )}
 
           {feedback && (
-            <div className={`feedback-card ${feedback.correct ? "feedback-card--correct" : "feedback-card--wrong"}`}>
+            <div ref={feedbackRef} className={`feedback-card ${feedback.correct ? "feedback-card--correct" : "feedback-card--wrong"}`} role="status" aria-live="polite">
               {feedback.correct && <div className="feedback-sparks" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <i key={index} />)}</div>}
               <div className="feedback-mark">{feedback.correct ? "✓" : "↗"}</div>
               <div><span>{feedback.correct ? missedConcepts.includes(currentChallenge.conceptId) ? "CONCEPT RECOVERED" : "THAT’S THE RIGHT CALL" : "LET’S READ IT AGAIN"}</span><p>{currentChallenge.explanation}</p>{!feedback.correct && <small>Correct answer: {feedback.answer}</small>}</div>
@@ -681,7 +727,7 @@ export default function Home() {
           ) : selectedPosition && selectedPositionModule ? (
             <div className="position-detail"><button className="back-link" onClick={() => setSelectedPosition(null)}>← All positions</button><div className="position-hero"><span>{selectedPosition.group}</span><h2>{selectedPosition.name} IQ</h2><p>Learn to {selectedPosition.focus} through reads, responsibilities, and decisions.</p></div><div className="position-module-card"><div><small>LEVEL 1 · ROOKIE</small><strong>{selectedPositionModule.title}</strong><p>{selectedPositionModule.description}</p><span>{selectedPositionModule.challenges.length} interactions · {selectedPositionModule.estimatedMinutes} min</span></div><button className="primary-button primary-button--small" onClick={() => startModule(selectedPositionModule)}>{sportProgress.completedModules.includes(selectedPositionModule.id) ? "Practice again" : "Start module"}<span>→</span></button></div><div className="future-modules"><div><span>02</span><strong>Situational Responsibilities</strong><small>STARTER · LOCKED</small></div><div><span>03</span><strong>Reads & Adjustments</strong><small>PLAYMAKER · LOCKED</small></div><div><span>04</span><strong>Position Mastery</strong><small>ALL-STAR · LOCKED</small></div></div></div>
           ) : (
-            <div className="positions-grid-section"><div className="section-heading"><span>CHOOSE YOUR ROOM</span><h2>Position IQ pathways</h2><p>Every major role has its own reads, responsibilities, and progression.</p></div>{Object.entries(groupedPositions).map(([group, positions]) => <div className="position-group" key={group}><h3>{group}</h3><div>{positions.map((position) => { const module = buildPositionModule(selectedSport, position); const done = sportProgress.completedModules.includes(module.id); return <button key={position.name} onClick={() => setSelectedPosition(position)}><span>{done ? "✓" : position.name.slice(0, 2).toUpperCase()}</span><strong>{position.name}</strong><small>{done ? "MODULE COMPLETE" : "VIEW PATH"}</small></button>; })}</div></div>)}</div>
+            <div className="positions-grid-section"><div className="section-heading"><span>CHOOSE YOUR ROOM</span><h2>Position IQ pathways</h2><p>Every major role has its own reads, responsibilities, and progression.</p></div>{Object.entries(groupedPositions).map(([group, positions]) => <div className="position-group" key={group}><h3>{group}</h3><div>{positions.map((position) => { const positionModule = buildPositionModule(selectedSport, position); const done = sportProgress.completedModules.includes(positionModule.id); return <button key={position.name} onClick={() => setSelectedPosition(position)}><span>{done ? "✓" : position.name.slice(0, 2).toUpperCase()}</span><strong>{position.name}</strong><small>{done ? "MODULE COMPLETE" : "VIEW PATH"}</small></button>; })}</div></div>)}</div>
           )}
         </section>
       </main>
@@ -743,5 +789,5 @@ function ProfileDashboard({ player, onUpdateIdentity, onReset }: { player: Playe
   const [accentColor, setAccentColor] = useState(player.accentColor);
   const [ageBand, setAgeBand] = useState<AgeBand>(player.ageBand);
   const rank = playerRank(player.totalXp);
-  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Make the playbook yours. Your age path changes pacing and presentation—not what sports you can explore.</p></div><div className="profile-layout"><div className="profile-card" style={{ "--player-color": player.accentColor } as React.CSSProperties}><span className="player-card-rank">{rank.name}</span><div className="profile-avatar">{player.avatarMark}</div><h2>{player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p><div className="player-card-stripe"><span>{player.ageBand}</span><span>{rank.mark}</span><span>SPORTS IQ</span></div></div><form onSubmit={(event) => { event.preventDefault(); if (name.trim()) onUpdateIdentity({ profileName: name.trim(), avatarMark, accentColor, ageBand }); }}><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /><span>AGE PATH</span><div className="profile-age-options">{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageBand === band.value ? "active" : ""} onClick={() => setAgeBand(band.value)}>{band.value}</button>)}</div><span>PLAYER MARK</span><div className="identity-options">{AVATAR_MARKS.map((mark) => <button type="button" key={mark} className={avatarMark === mark ? "active" : ""} onClick={() => setAvatarMark(mark)}>{mark}</button>)}</div><span>TEAM COLOR</span><div className="color-options">{PLAYER_COLORS.map((color) => <button type="button" key={color} className={accentColor === color ? "active" : ""} style={{ background: color }} onClick={() => setAccentColor(color)} aria-label={`Choose team color ${color}`} />)}</div><button className="primary-button primary-button--small" type="submit">Save player card <span>→</span></button><hr /><span>DEVICE DATA</span><p>Your experience choices, mastery, XP, badges, and streak are stored in this browser for the current preview.</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
+  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Make the playbook yours. Your age path changes pacing and presentation—not what sports you can explore.</p></div><div className="profile-layout"><div className="profile-card" style={{ "--player-color": player.accentColor } as React.CSSProperties}><span className="player-card-rank">{rank.name}</span><div className="profile-avatar">{player.avatarMark}</div><h2>{player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p><div className="player-card-stripe"><span>{player.ageBand}</span><span>{rank.mark}</span><span>SPORTS IQ</span></div></div><form onSubmit={(event) => { event.preventDefault(); if (name.trim()) onUpdateIdentity({ profileName: name.trim(), avatarMark, accentColor, ageBand }); }}><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /><span>AGE PATH</span><div className="profile-age-options">{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageBand === band.value ? "active" : ""} onClick={() => setAgeBand(band.value)} aria-pressed={ageBand === band.value}>{band.value}</button>)}</div><span>PLAYER MARK</span><div className="identity-options">{AVATAR_MARKS.map((mark) => <button type="button" key={mark} className={avatarMark === mark ? "active" : ""} onClick={() => setAvatarMark(mark)} aria-pressed={avatarMark === mark}>{mark}</button>)}</div><span>TEAM COLOR</span><div className="color-options">{PLAYER_COLORS.map((color) => <button type="button" key={color} className={accentColor === color ? "active" : ""} style={{ background: color }} onClick={() => setAccentColor(color)} aria-label={`Choose team color ${color}`} aria-pressed={accentColor === color} />)}</div><button className="primary-button primary-button--small" type="submit">Save player card <span>→</span></button><hr /><span>DEVICE DATA</span><p>Your experience choices, mastery, XP, badges, and streak are stored in this browser for the current preview.</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
 }

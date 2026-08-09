@@ -237,6 +237,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 /* Lesson */
 .lesson-shell { background-image: linear-gradient(90deg,rgba(18,35,59,.025) 1px,transparent 1px); background-size: 50px 50px; }
 .lesson-header { display: grid; grid-template-columns: auto 1fr auto; gap: 30px; align-items: center; padding: 18px clamp(18px,4vw,55px); border-bottom: 1px solid var(--line); }
+.lesson-exit-button { display: flex; min-height: 44px; align-items: center; gap: 8px; padding: 0 13px; border: 1px solid var(--line); background: var(--surface); color: var(--navy); font-size: 9px; font-weight: 950; text-transform: uppercase; cursor: pointer; }
+.lesson-exit-button span { color: var(--teal); font-size: 15px; }
 .lesson-progress { height: 7px; overflow: hidden; background: var(--surface-2); }
 .lesson-progress span { display: block; height: 100%; background: var(--teal); transition: width 250ms ease; }
 .lesson-counters { display: flex; gap: 18px; }
@@ -247,8 +249,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 .challenge-heading > div { display: flex; flex-direction: column; gap: 5px; }
 .challenge-heading span { color: var(--teal); font-size: 10px; font-weight: 950; letter-spacing: .16em; text-transform: uppercase; }
 .challenge-heading small { color: var(--muted); font-size: 9px; }
-.hint-button { padding: 7px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 9px; font-weight: 900; cursor: pointer; }
+.hint-button { min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 9px; font-weight: 900; cursor: pointer; }
+.hint-panel { display: flex; gap: 12px; align-items: baseline; margin: 18px 0 -4px; padding: 13px 15px; border-left: 4px solid var(--gold); background: color-mix(in srgb,var(--gold) 10%,var(--surface)); }
+.hint-panel strong { flex: 0 0 auto; color: var(--teal); font-size: 8px; letter-spacing: .12em; }
+.hint-panel span { color: var(--muted); font-family: Georgia,serif; font-size: 13px; line-height: 1.45; }
 .challenge-stage > h1 { max-width: 850px; min-height: 2.2em; margin: 22px 0 35px; font-size: clamp(34px,4.4vw,58px); font-weight: 950; letter-spacing: -.055em; line-height: 1.03; }
+.answer-instruction { margin: 0 0 10px; color: var(--muted); font-size: 10px; font-weight: 800; }
 .challenge-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .challenge-options button { display: grid; min-height: 68px; grid-template-columns: 39px 1fr 26px; align-items: center; padding: 10px 12px 10px 10px; border: 1px solid var(--line); background: var(--surface); text-align: left; cursor: pointer; transition: 140ms ease; }
 .challenge-options button:hover:not(:disabled) { border-color: var(--teal); box-shadow: 3px 3px 0 color-mix(in srgb,var(--teal) 28%,transparent); transform: translate(-1px,-1px); }
@@ -265,6 +271,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 .field-diagram .end-zone { display: grid; height: 100%; place-items: center; background: color-mix(in srgb,var(--teal) 24%,var(--surface)); color: var(--teal); font-size: 7px; font-weight: 950; letter-spacing: .1em; writing-mode: vertical-rl; }
 .field-diagram i { height: 100%; border-right: 1px dashed color-mix(in srgb,var(--teal) 45%,transparent); }
 .check-row { display: flex; justify-content: flex-end; align-items: center; gap: 22px; margin-top: 20px; }
+.check-row .primary-button { min-height: 48px; }
 .feedback-card { position: relative; display: grid; grid-template-columns: 45px 1fr auto; gap: 16px; align-items: center; margin-top: 20px; padding: 18px; border-left: 4px solid var(--coral); background: color-mix(in srgb,var(--coral) 7%,var(--surface)); animation: rise 220ms ease-out; }
 .feedback-card--correct { border-color: var(--green); background: color-mix(in srgb,var(--green) 7%,var(--surface)); }
 .feedback-mark { display: grid; width: 43px; height: 43px; place-items: center; border-radius: 50%; background: var(--coral); color: white; font-size: 21px; font-weight: 950; }
@@ -548,6 +555,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
   .challenge-stage > h1 { min-height: 0; font-size: 35px; }
   .challenge-heading { gap: 14px; }
   .challenge-tools { align-items: flex-end; flex-direction: column; }
+  .hint-panel { align-items: flex-start; flex-direction: column; gap: 6px; }
   .round-clock { width: 38px; height: 38px; }
   .xp-burst { top: 125px; right: 18px; }
   .challenge-options { grid-template-columns: 1fr; }

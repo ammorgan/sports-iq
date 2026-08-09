@@ -8,10 +8,13 @@ export type Challenge = {
   type: ChallengeType;
   label: string;
   prompt: string;
+  youngPrompt?: string;
   options: string[];
   correct: string | string[];
   explanation: string;
+  youngExplanation?: string;
   hint?: string;
+  youngHint?: string;
   xp: number;
   remediation?: Challenge;
 };
@@ -305,9 +308,11 @@ const remediationPlayers: Challenge = {
   type: "scenario",
   label: "Second look",
   prompt: "Your offense has a QB, RB, TE, five linemen, and three wide receivers. How many players are in the unit?",
+  youngPrompt: "Count the players: 1 quarterback + 1 runner + 1 tight end + 5 linemen + 3 receivers. How many?",
   options: ["10", "11", "12", "13"],
   correct: "11",
   explanation: "Add the full unit: 1 + 1 + 1 + 5 + 3 = 11. You recovered the concept.",
+  youngExplanation: "All those players add up to 11.",
   xp: 12,
 };
 
@@ -327,10 +332,13 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "choice",
         label: "Know the unit",
         prompt: "How many players does one football team normally have on the field at a time?",
+        youngPrompt: "A football team puts how many players on the field?",
         options: ["9", "10", "11", "12"],
         correct: "11",
         explanation: "A complete offensive, defensive, or special-teams unit normally has 11 players on the field.",
+        youngExplanation: "Each team uses 11 players at one time.",
         hint: "Think of one complete offensive unit.",
+        youngHint: "Think of the number just after 10.",
         xp: 10,
         remediation: remediationPlayers,
       },
@@ -340,9 +348,11 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "hotspot",
         label: "Tap the field",
         prompt: "Your team must cross which line to score a touchdown?",
+        youngPrompt: "Which line must the ball cross for a touchdown?",
         options: ["Sideline", "Goal line", "50-yard line", "Hash mark"],
         correct: "Goal line",
         explanation: "The ball must break the plane of the opponent’s goal line while controlled by a player.",
+        youngExplanation: "The ball must cross the other team’s goal line for a touchdown.",
         xp: 12,
       },
       {
@@ -351,9 +361,11 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "choice",
         label: "Game clock",
         prompt: "How is a regulation football game divided?",
+        youngPrompt: "A football game is split into how many quarters?",
         options: ["Two halves only", "Three periods", "Four quarters", "Nine innings"],
         correct: "Four quarters",
         explanation: "Football uses four quarters. Halftime separates the second and third quarters.",
+        youngExplanation: "A football game has four quarters.",
         xp: 10,
       },
       {
@@ -362,9 +374,11 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "truefalse",
         label: "True or false",
         prompt: "The line of scrimmage is the imaginary line running through the ball before the snap.",
+        youngPrompt: "True or false: Before the play, the line through the ball is called the line of scrimmage.",
         options: ["True", "False"],
         correct: "True",
         explanation: "That line separates the two teams before the play and anchors every formation.",
+        youngExplanation: "The line of scrimmage separates the teams before the play starts.",
         xp: 10,
       },
       {
@@ -373,9 +387,11 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "ordering",
         label: "Put it in order",
         prompt: "Arrange the basic start of an offensive play.",
+        youngPrompt: "What is the right order for starting a play?",
         options: ["Players align", "Quarterback calls cadence", "Center snaps", "Play unfolds"],
         correct: ["Players align", "Quarterback calls cadence", "Center snaps", "Play unfolds"],
         explanation: "Alignment establishes legal positions, the cadence coordinates timing, and the snap makes the ball live.",
+        youngExplanation: "Players line up, the quarterback calls the signal, and the center snaps the ball.",
         xp: 15,
       },
       {
@@ -384,9 +400,11 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "choice",
         label: "Who has the ball?",
         prompt: "Which unit begins a normal play in possession of the ball?",
+        youngPrompt: "Which group starts the play with the ball?",
         options: ["Offense", "Defense", "Officials", "Coverage team"],
         correct: "Offense",
         explanation: "The offense possesses the ball and tries to advance it; the defense tries to stop or take it away.",
+        youngExplanation: "The offense starts with the ball and tries to move it down the field.",
         xp: 10,
       },
       {
@@ -395,9 +413,11 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "multi",
         label: "Select all that apply",
         prompt: "Which pieces are standard protective equipment in tackle football?",
+        youngPrompt: "Which gear helps protect a tackle football player? Choose all that apply.",
         options: ["Helmet", "Shoulder pads", "Shin guards", "Mouthguard"],
         correct: ["Helmet", "Shoulder pads", "Mouthguard"],
         explanation: "Helmets, shoulder pads, and mouthguards are standard. Shin guards belong to sports such as soccer.",
+        youngExplanation: "Players use helmets, shoulder pads, and mouthguards for protection.",
         xp: 15,
       },
       {
@@ -406,9 +426,11 @@ export const FOOTBALL_MODULES: LearningModule[] = [
         type: "scenario",
         label: "What happens next?",
         prompt: "The fourth-quarter clock reaches 0:00 and one team is ahead. What normally happens?",
+        youngPrompt: "The clock reaches 0:00 and one team is ahead. What usually happens?",
         options: ["The game ends", "Every game goes to overtime", "A fifth quarter begins", "The score resets"],
         correct: "The game ends",
         explanation: "If the final period ends without a tie requiring overtime, the team ahead wins.",
+        youngExplanation: "When time runs out and one team is ahead, the game ends.",
         xp: 12,
       },
     ],

@@ -75,6 +75,8 @@ test("age paths meaningfully adapt the learning experience", async () => {
   }
   assert.match(source, /fewer choices, and no timer/);
   assert.match(source, /seconds: null/);
+  assert.match(source, /return band \? band\.seconds : 35/);
+  assert.doesNotMatch(source, /\?\.seconds \?\? 35/);
   assert.match(source, /value: "10-12"[\s\S]*?seconds: 60/);
   assert.match(source, /value: "13-15"[\s\S]*?seconds: 45/);
   assert.match(source, /value: "16-17"[\s\S]*?seconds: 35/);
@@ -88,4 +90,9 @@ test("age paths meaningfully adapt the learning experience", async () => {
   assert.match(source, /soundOn/);
   assert.match(source, /ageBandConfirmed/);
   assert.match(source, /ONE-TIME PLAYBOOK UPDATE/);
+  assert.match(source, /Check my answer/);
+  assert.match(source, /COACH’S TIP/);
+  assert.doesNotMatch(source, /window\.alert\(currentChallenge\.hint/);
+  assert.match(source, /challenge\.youngPrompt/);
+  assert.match(source, /challenge\.youngExplanation/);
 });
