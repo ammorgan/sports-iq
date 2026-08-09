@@ -73,7 +73,9 @@ test("age paths meaningfully adapt the learning experience", async () => {
   for (const age of ["7-9", "10-12", "13-15", "16-17", "18+"]) {
     assert.match(source, new RegExp(`value: "${age.replace("+", "\\+")}"`));
   }
-  assert.match(source, /fewer choices, extra thinking time/);
+  assert.match(source, /fewer choices, and no timer/);
+  assert.match(source, /seconds: null/);
+  assert.match(source, /challengeSeconds !== null/);
   assert.match(source, /options\.length > 3/);
   assert.match(source, /challengeSeconds/);
   assert.match(source, /play-visual/);

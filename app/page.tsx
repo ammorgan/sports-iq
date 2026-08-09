@@ -76,8 +76,8 @@ const DEFAULT_PLAYER: Player = {
   ageBandConfirmed: false,
 };
 
-const AGE_BANDS: Array<{ value: AgeBand; label: string; title: string; note: string; seconds: number }> = [
-  { value: "7-9", label: "AGES 7–9", title: "Play & Discover", note: "More visuals, fewer choices, extra thinking time.", seconds: 45 },
+const AGE_BANDS: Array<{ value: AgeBand; label: string; title: string; note: string; seconds: number | null }> = [
+  { value: "7-9", label: "AGES 7–9", title: "Play & Discover", note: "More visuals, fewer choices, and no timer.", seconds: null },
   { value: "10-12", label: "AGES 10–12", title: "Build the Basics", note: "Clear explanations and game-like decisions.", seconds: 40 },
   { value: "13-15", label: "AGES 13–15", title: "Read the Game", note: "Full scenarios, strategy, and position reads.", seconds: 35 },
   { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Faster pacing and deeper tactical language.", seconds: 30 },
@@ -197,7 +197,7 @@ export default function Home() {
   const [missedConcepts, setMissedConcepts] = useState<string[]>([]);
   const [recoveredConcepts, setRecoveredConcepts] = useState<string[]>([]);
   const [summary, setSummary] = useState<ModuleSummary | null>(null);
-  const [challengeSeconds, setChallengeSeconds] = useState(30);
+  const [challengeSeconds, setChallengeSeconds] = useState<number | null>(30);
   const [quickSportId, setQuickSportId] = useState("football");
   const [ageChoice, setAgeChoice] = useState<AgeBand>("10-12");
 
@@ -223,8 +223,10 @@ export default function Home() {
 
   useEffect(() => {
     if (screen !== "module" || feedback) return;
-    setChallengeSeconds(AGE_BANDS.find((band) => band.value === player.ageBand)?.seconds ?? 35);
-    const timer = window.setInterval(() => setChallengeSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    const timeLimit = AGE_BANDS.find((band) => band.value === player.ageBand)?.seconds ?? 35;
+    setChallengeSeconds(timeLimit);
+    if (timeLimit === null) return;
+    const timer = window.setInterval(() => setChallengeSeconds((seconds) => seconds === null ? null : Math.max(0, seconds - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [screen, challengeIndex, feedback, player.ageBand]);
 
@@ -573,7 +575,7 @@ export default function Home() {
           {feedback?.correct && <div className="xp-burst" key={`xp-${challengeIndex}`}>+{currentChallenge.xp + Math.min(Math.max(0, sessionStreak - 1) * 2, 10)} XP</div>}
           <div className="challenge-heading">
             <div><span>{currentChallenge.label}</span><small>{activeModule.title} · {challengeIndex + 1} of {queue.length}</small></div>
-            <div className="challenge-tools"><span className={`round-clock ${challengeSeconds <= 10 ? "round-clock--low" : ""}`}>{challengeSeconds}<small>SEC</small></span>{sessionStreak >= 2 && <strong className="combo-chip">{sessionStreak}× COMBO</strong>}<button className="hint-button" onClick={() => window.alert(currentChallenge.hint ?? "Look for the option that best supports the team’s immediate objective.")}>Need a hint?</button></div>
+            <div className="challenge-tools">{challengeSeconds !== null && <span className={`round-clock ${challengeSeconds <= 10 ? "round-clock--low" : ""}`}>{challengeSeconds}<small>SEC</small></span>}{sessionStreak >= 2 && <strong className="combo-chip">{sessionStreak}× COMBO</strong>}<button className="hint-button" onClick={() => window.alert(currentChallenge.hint ?? "Look for the option that best supports the team’s immediate objective.")}>Need a hint?</button></div>
           </div>
           <h1>{currentChallenge.prompt}</h1>
 
