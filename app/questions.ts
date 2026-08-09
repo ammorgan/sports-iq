@@ -1,0 +1,274 @@
+export type GameCategory = "all" | "pro" | "college" | "legends";
+
+export type Question = {
+  id: string;
+  category: Exclude<GameCategory, "all">;
+  sport: string;
+  difficulty: "ROOKIE" | "VETERAN" | "ALL-STAR";
+  prompt: string;
+  choices: [string, string, string, string];
+  answer: number;
+  fact: string;
+};
+
+export const CATEGORY_LABELS: Record<GameCategory, string> = {
+  all: "All Sports",
+  pro: "Pro Leagues",
+  college: "College Sports",
+  legends: "Legends & Records",
+};
+
+export const QUESTIONS: Question[] = [
+  {
+    id: "pro-nba-shot-clock",
+    category: "pro",
+    sport: "BASKETBALL",
+    difficulty: "ROOKIE",
+    prompt: "How many seconds are on the NBA shot clock?",
+    choices: ["20", "24", "30", "35"],
+    answer: 1,
+    fact: "The NBA introduced the 24-second shot clock for the 1954–55 season.",
+  },
+  {
+    id: "pro-nfl-safety",
+    category: "pro",
+    sport: "FOOTBALL",
+    difficulty: "ROOKIE",
+    prompt: "How many points is a safety worth in the NFL?",
+    choices: ["1", "2", "3", "6"],
+    answer: 1,
+    fact: "A safety awards two points and gives the scoring team possession after a free kick.",
+  },
+  {
+    id: "pro-mlb-perfect",
+    category: "pro",
+    sport: "BASEBALL",
+    difficulty: "VETERAN",
+    prompt: "How many consecutive batters must a pitcher retire for a nine-inning perfect game?",
+    choices: ["18", "24", "27", "30"],
+    answer: 2,
+    fact: "A perfect nine-inning game requires retiring all 27 opposing batters without one reaching base.",
+  },
+  {
+    id: "pro-nhl-hat-trick",
+    category: "pro",
+    sport: "HOCKEY",
+    difficulty: "ROOKIE",
+    prompt: "What is a hat trick in hockey?",
+    choices: ["Three assists", "Three goals", "Three penalties", "Three saves"],
+    answer: 1,
+    fact: "A player records a hat trick by scoring three goals in the same game.",
+  },
+  {
+    id: "pro-soccer-red-card",
+    category: "pro",
+    sport: "SOCCER",
+    difficulty: "ROOKIE",
+    prompt: "What happens when a soccer player receives a red card?",
+    choices: ["A penalty kick is automatic", "The player changes positions", "The player is sent off", "The match immediately ends"],
+    answer: 2,
+    fact: "A red card sends the player off, and the team normally continues with one fewer player.",
+  },
+  {
+    id: "pro-tennis-deuce",
+    category: "pro",
+    sport: "TENNIS",
+    difficulty: "VETERAN",
+    prompt: "What score is called deuce in a tennis game?",
+    choices: ["15–15", "30–30", "40–30", "40–40"],
+    answer: 3,
+    fact: "At 40–40, a player must win two consecutive points to take the game.",
+  },
+  {
+    id: "pro-golf-eagle",
+    category: "pro",
+    sport: "GOLF",
+    difficulty: "VETERAN",
+    prompt: "An eagle in golf is how many strokes under par on a hole?",
+    choices: ["One", "Two", "Three", "Four"],
+    answer: 1,
+    fact: "An eagle is two under par; one under is a birdie and three under is an albatross.",
+  },
+  {
+    id: "pro-formula-one-flag",
+    category: "pro",
+    sport: "MOTORSPORT",
+    difficulty: "VETERAN",
+    prompt: "Which flag signals the end of a motor race?",
+    choices: ["Solid red", "Solid blue", "Black and white checkered", "Yellow and red striped"],
+    answer: 2,
+    fact: "The checkered flag is displayed to the winner and each car that crosses the finish line afterward.",
+  },
+  {
+    id: "college-march-madness",
+    category: "college",
+    sport: "BASKETBALL",
+    difficulty: "ROOKIE",
+    prompt: "March Madness is the nickname for which college championship?",
+    choices: ["Basketball", "Baseball", "Football", "Wrestling"],
+    answer: 0,
+    fact: "March Madness refers to the NCAA Division I basketball tournaments played each spring.",
+  },
+  {
+    id: "college-heisman",
+    category: "college",
+    sport: "FOOTBALL",
+    difficulty: "ROOKIE",
+    prompt: "The Heisman Trophy honors an outstanding player in which sport?",
+    choices: ["Basketball", "Football", "Baseball", "Ice hockey"],
+    answer: 1,
+    fact: "The Heisman Memorial Trophy is awarded annually to an outstanding college football player.",
+  },
+  {
+    id: "college-cws-city",
+    category: "college",
+    sport: "BASEBALL",
+    difficulty: "VETERAN",
+    prompt: "Which city is the long-time home of the Men’s College World Series?",
+    choices: ["Austin", "Omaha", "Louisville", "Phoenix"],
+    answer: 1,
+    fact: "Omaha, Nebraska, has hosted the Men’s College World Series since 1950.",
+  },
+  {
+    id: "college-frozen-four",
+    category: "college",
+    sport: "HOCKEY",
+    difficulty: "VETERAN",
+    prompt: "The Frozen Four decides the NCAA champion in which sport?",
+    choices: ["Lacrosse", "Ice hockey", "Skiing", "Field hockey"],
+    answer: 1,
+    fact: "The Frozen Four is the national semifinal and championship stage of NCAA ice hockey.",
+  },
+  {
+    id: "college-track-relay",
+    category: "college",
+    sport: "TRACK & FIELD",
+    difficulty: "ROOKIE",
+    prompt: "How many runners compete for one team in a standard 4×100-meter relay?",
+    choices: ["Two", "Three", "Four", "Five"],
+    answer: 2,
+    fact: "Four runners each complete 100 meters and exchange a baton within designated zones.",
+  },
+  {
+    id: "college-volleyball-sets",
+    category: "college",
+    sport: "VOLLEYBALL",
+    difficulty: "VETERAN",
+    prompt: "A college indoor volleyball match is normally won by taking how many sets?",
+    choices: ["Two", "Three", "Four", "Five"],
+    answer: 1,
+    fact: "Indoor matches use a best-of-five format, so the first team to win three sets wins the match.",
+  },
+  {
+    id: "college-gymnastics-perfect",
+    category: "college",
+    sport: "GYMNASTICS",
+    difficulty: "ROOKIE",
+    prompt: "What is the traditional perfect score for a college gymnastics routine?",
+    choices: ["5.0", "9.5", "10.0", "100"],
+    answer: 2,
+    fact: "NCAA women’s gymnastics retains the familiar 10.0 scoring system.",
+  },
+  {
+    id: "college-overtime-football",
+    category: "college",
+    sport: "FOOTBALL",
+    difficulty: "ALL-STAR",
+    prompt: "In college football overtime, what does each team initially receive?",
+    choices: ["A kickoff return", "One possession", "Two timeouts", "A field goal"],
+    answer: 1,
+    fact: "College overtime gives each team an opportunity to possess the ball during an overtime period.",
+  },
+  {
+    id: "legend-jordan-number",
+    category: "legends",
+    sport: "BASKETBALL",
+    difficulty: "ROOKIE",
+    prompt: "Which number is most closely associated with Michael Jordan’s Chicago Bulls career?",
+    choices: ["6", "23", "32", "45"],
+    answer: 1,
+    fact: "Jordan made No. 23 iconic, although he also briefly wore No. 45 after returning in 1995.",
+  },
+  {
+    id: "legend-ruth-nickname",
+    category: "legends",
+    sport: "BASEBALL",
+    difficulty: "ROOKIE",
+    prompt: "Which baseball legend was nicknamed the Sultan of Swat?",
+    choices: ["Willie Mays", "Babe Ruth", "Hank Aaron", "Ted Williams"],
+    answer: 1,
+    fact: "Babe Ruth’s power hitting inspired several nicknames, including the Sultan of Swat.",
+  },
+  {
+    id: "legend-gretzky-record",
+    category: "legends",
+    sport: "HOCKEY",
+    difficulty: "VETERAN",
+    prompt: "Wayne Gretzky retired as the NHL’s career leader in which two major categories?",
+    choices: ["Goals and assists", "Saves and shutouts", "Games and penalties", "Hits and blocks"],
+    answer: 0,
+    fact: "Gretzky finished with NHL records for career goals, assists, and total points.",
+  },
+  {
+    id: "legend-serena-slams",
+    category: "legends",
+    sport: "TENNIS",
+    difficulty: "ALL-STAR",
+    prompt: "How many Grand Slam singles titles did Serena Williams win?",
+    choices: ["18", "20", "23", "24"],
+    answer: 2,
+    fact: "Williams won 23 major singles championships, the most in the Open Era when she retired.",
+  },
+  {
+    id: "legend-bolt-distance",
+    category: "legends",
+    sport: "TRACK & FIELD",
+    difficulty: "VETERAN",
+    prompt: "Usain Bolt set individual world records at which two distances?",
+    choices: ["100m and 200m", "200m and 400m", "400m and 800m", "110m hurdles and 200m"],
+    answer: 0,
+    fact: "Bolt set world records in both the 100 meters and 200 meters in 2009.",
+  },
+  {
+    id: "legend-pele-cups",
+    category: "legends",
+    sport: "SOCCER",
+    difficulty: "VETERAN",
+    prompt: "Pelé is the only men’s player to win how many FIFA World Cups?",
+    choices: ["Two", "Three", "Four", "Five"],
+    answer: 1,
+    fact: "Pelé was part of Brazil’s championship teams in 1958, 1962, and 1970.",
+  },
+  {
+    id: "legend-ali-name",
+    category: "legends",
+    sport: "BOXING",
+    difficulty: "ROOKIE",
+    prompt: "What was Muhammad Ali’s birth name?",
+    choices: ["Joe Louis", "Cassius Clay", "Jack Johnson", "Floyd Patterson"],
+    answer: 1,
+    fact: "Ali was born Cassius Marcellus Clay Jr. and announced his new name in 1964.",
+  },
+  {
+    id: "legend-tiger-masters",
+    category: "legends",
+    sport: "GOLF",
+    difficulty: "ALL-STAR",
+    prompt: "Tiger Woods became the youngest Masters champion in 1997 at what age?",
+    choices: ["19", "20", "21", "22"],
+    answer: 2,
+    fact: "Woods was 21 when he won the 1997 Masters by 12 strokes.",
+  },
+];
+
+export function buildRound(category: GameCategory, count = 10): Question[] {
+  const pool = category === "all"
+    ? QUESTIONS
+    : QUESTIONS.filter((question) => question.category === category);
+
+  return [...pool]
+    .map((question) => ({ question, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .slice(0, Math.min(count, pool.length))
+    .map(({ question }) => question);
+}
