@@ -111,11 +111,11 @@ test("age paths meaningfully adapt the learning experience", async () => {
   assert.match(source, /challenge\.youngExplanation/);
 });
 
-test("players can choose from fifteen animated mini characters and understand sound controls", async () => {
+test("players can choose from twenty-one diverse animated mini characters and understand sound controls", async () => {
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  assert.equal([...source.matchAll(/src: "\/avatars\/avatar-\d{2}\.png"/g)].length, 15);
+  assert.equal([...source.matchAll(/src: "\/avatars\/avatar-\d{2}\.png"/g)].length, 21);
   assert.match(source, /Choose your mini character/);
   assert.match(source, /SFX/);
   assert.match(source, /answer feedback sounds/);
@@ -130,7 +130,7 @@ test("mobile app shares learning data and adapts across iOS, Android, phones, an
   const packageSource = await readFile(new URL("../mobile/package.json", import.meta.url), "utf8");
 
   assert.match(source, /from "\.\.\/app\/learning-data"/);
-  assert.equal([...source.matchAll(/require\("\.\/assets\/avatars\/avatar-\d{2}\.png"\)/g)].length, 15);
+  assert.equal([...source.matchAll(/require\("\.\/assets\/avatars\/avatar-\d{2}\.png"\)/g)].length, 21);
   assert.match(source, /useWindowDimensions/);
   assert.match(source, /width >= 720/);
   assert.match(source, /seconds: null/);

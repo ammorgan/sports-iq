@@ -111,6 +111,12 @@ const AVATARS = [
   { id: "avatar-13", name: "Clutch", src: "/avatars/avatar-13.png" },
   { id: "avatar-14", name: "Flash", src: "/avatars/avatar-14.png" },
   { id: "avatar-15", name: "Stride", src: "/avatars/avatar-15.png" },
+  { id: "avatar-16", name: "Courage", src: "/avatars/avatar-16.png" },
+  { id: "avatar-17", name: "Titan", src: "/avatars/avatar-17.png" },
+  { id: "avatar-18", name: "Pulse", src: "/avatars/avatar-18.png" },
+  { id: "avatar-19", name: "Anchor", src: "/avatars/avatar-19.png" },
+  { id: "avatar-20", name: "Rise", src: "/avatars/avatar-20.png" },
+  { id: "avatar-21", name: "Orbit", src: "/avatars/avatar-21.png" },
 ] as const;
 const PLAYER_COLORS = ["#3b7f79", "#b85f45", "#59739a", "#6b64a2", "#9a6c36", "#4b7a58"];
 const PLAYER_RANKS = [

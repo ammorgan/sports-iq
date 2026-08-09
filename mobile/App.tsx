@@ -49,6 +49,12 @@ const AVATARS: Array<{ id: string; name: string; source: ImageSourcePropType }> 
   { id: "avatar-13", name: "Clutch", source: require("./assets/avatars/avatar-13.png") },
   { id: "avatar-14", name: "Flash", source: require("./assets/avatars/avatar-14.png") },
   { id: "avatar-15", name: "Stride", source: require("./assets/avatars/avatar-15.png") },
+  { id: "avatar-16", name: "Courage", source: require("./assets/avatars/avatar-16.png") },
+  { id: "avatar-17", name: "Titan", source: require("./assets/avatars/avatar-17.png") },
+  { id: "avatar-18", name: "Pulse", source: require("./assets/avatars/avatar-18.png") },
+  { id: "avatar-19", name: "Anchor", source: require("./assets/avatars/avatar-19.png") },
+  { id: "avatar-20", name: "Rise", source: require("./assets/avatars/avatar-20.png") },
+  { id: "avatar-21", name: "Orbit", source: require("./assets/avatars/avatar-21.png") },
 ];
 
 type AgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
