@@ -67,3 +67,17 @@ test("football contains every major position group from the product brief", asyn
     "Cornerback", "Safety", "Kicker", "Punter", "Long Snapper", "Returner",
   ]) assert.match(source, new RegExp(`name: "${position}"`));
 });
+
+test("age paths meaningfully adapt the learning experience", async () => {
+  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  for (const age of ["7-9", "10-12", "13-15", "16-17", "18+"]) {
+    assert.match(source, new RegExp(`value: "${age.replace("+", "\\+")}"`));
+  }
+  assert.match(source, /fewer choices, extra thinking time/);
+  assert.match(source, /options\.length > 3/);
+  assert.match(source, /challengeSeconds/);
+  assert.match(source, /play-visual/);
+  assert.match(source, /PLAYER_RANKS/);
+  assert.match(source, /avatarMark/);
+  assert.match(source, /soundOn/);
+});

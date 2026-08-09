@@ -19,6 +19,8 @@ import {
 const PLAYER_KEY = "sports-iq-learning-profile-v1";
 const DAILY_GOAL = 100;
 
+type AgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
+
 type Mastery = { attempts: number; correct: number; recovered: boolean };
 type SportProgress = {
   experience?: ExperienceLevel;
@@ -38,6 +40,10 @@ type Player = {
   sports: Record<string, SportProgress>;
   recentActivity: Array<{ title: string; detail: string; date: string }>;
   darkMode: boolean;
+  soundOn: boolean;
+  avatarMark: string;
+  accentColor: string;
+  ageBand: AgeBand;
 };
 type SessionResult = { conceptId: string; correct: boolean; remediation: boolean };
 type ModuleSummary = {
@@ -62,12 +68,50 @@ const DEFAULT_PLAYER: Player = {
   sports: {},
   recentActivity: [],
   darkMode: false,
+  soundOn: true,
+  avatarMark: "★",
+  accentColor: "#3b7f79",
+  ageBand: "10-12",
 };
+
+const AGE_BANDS: Array<{ value: AgeBand; label: string; title: string; note: string; seconds: number }> = [
+  { value: "7-9", label: "AGES 7–9", title: "Play & Discover", note: "More visuals, fewer choices, extra thinking time.", seconds: 45 },
+  { value: "10-12", label: "AGES 10–12", title: "Build the Basics", note: "Clear explanations and game-like decisions.", seconds: 40 },
+  { value: "13-15", label: "AGES 13–15", title: "Read the Game", note: "Full scenarios, strategy, and position reads.", seconds: 35 },
+  { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Faster pacing and deeper tactical language.", seconds: 30 },
+  { value: "18+", label: "AGES 18+", title: "Full Sports IQ", note: "Complete detail for adults, athletes, and coaches.", seconds: 30 },
+];
+
+const AVATAR_MARKS = ["★", "⚡", "◆", "↑", "23", "IQ"];
+const PLAYER_COLORS = ["#3b7f79", "#b85f45", "#59739a", "#6b64a2", "#9a6c36", "#4b7a58"];
+const PLAYER_RANKS = [
+  { name: "Rookie Reader", xp: 0, mark: "01" },
+  { name: "Game Scout", xp: 300, mark: "02" },
+  { name: "Field General", xp: 800, mark: "03" },
+  { name: "Sports Scholar", xp: 1600, mark: "04" },
+  { name: "Arena Elite", xp: 3000, mark: "05" },
+];
 
 function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`logo ${compact ? "logo--compact" : ""}`} aria-label="Sports IQ">
       <span>SPORTS</span><strong>IQ</strong>
+    </div>
+  );
+}
+
+function SportTicker() {
+  const tickerSports = [...SPORTS, ...SPORTS];
+  return (
+    <div className="sport-ticker" aria-label="Sports available to learn">
+      <div className="sport-ticker-track">
+        {tickerSports.map((sport, index) => (
+          <span key={`${sport.id}-${index}`} aria-hidden={index >= SPORTS.length}>
+            <b style={{ "--ticker-color": sport.color } as React.CSSProperties}>{sport.mark}</b>
+            {sport.name}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -100,6 +144,30 @@ function masteryLabel(record?: Mastery) {
   return "Learning";
 }
 
+function playerRank(xp: number) {
+  return [...PLAYER_RANKS].reverse().find((rank) => xp >= rank.xp) ?? PLAYER_RANKS[0];
+}
+
+function playFeedbackTone(correct: boolean) {
+  try {
+    const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audio = new AudioContextClass();
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    oscillator.type = correct ? "sine" : "triangle";
+    oscillator.frequency.setValueAtTime(correct ? 520 : 210, audio.currentTime);
+    if (correct) oscillator.frequency.exponentialRampToValueAtTime(760, audio.currentTime + 0.13);
+    gain.gain.setValueAtTime(0.0001, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.08, audio.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.2);
+    oscillator.connect(gain);
+    gain.connect(audio.destination);
+    oscillator.start();
+    oscillator.stop(audio.currentTime + 0.21);
+  } catch { /* sound is an optional enhancement */ }
+}
+
 function moduleList(sport: Sport) {
   return sport.id === "football" ? FOOTBALL_MODULES : [buildSportIntroModule(sport)];
 }
@@ -127,6 +195,9 @@ export default function Home() {
   const [missedConcepts, setMissedConcepts] = useState<string[]>([]);
   const [recoveredConcepts, setRecoveredConcepts] = useState<string[]>([]);
   const [summary, setSummary] = useState<ModuleSummary | null>(null);
+  const [challengeSeconds, setChallengeSeconds] = useState(30);
+  const [quickSportId, setQuickSportId] = useState("football");
+  const [ageChoice, setAgeChoice] = useState<AgeBand>("10-12");
 
   useEffect(() => {
     const saved = window.localStorage.getItem(PLAYER_KEY);
@@ -146,6 +217,13 @@ export default function Home() {
   useEffect(() => {
     if (hydrated) window.localStorage.setItem(PLAYER_KEY, JSON.stringify(player));
   }, [hydrated, player]);
+
+  useEffect(() => {
+    if (screen !== "module" || feedback) return;
+    setChallengeSeconds(AGE_BANDS.find((band) => band.value === player.ageBand)?.seconds ?? 35);
+    const timer = window.setInterval(() => setChallengeSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [screen, challengeIndex, feedback, player.ageBand]);
 
   const selectedSport = SPORTS.find((sport) => sport.id === selectedSportId) ?? SPORTS[0];
   const sportProgress = player.sports[selectedSport.id] ?? emptySportProgress();
@@ -184,15 +262,22 @@ export default function Home() {
     setScreen("sport");
   };
 
-  const prepareChallenge = (challenge: Challenge): Challenge => ({
-    ...challenge,
-    options: shuffle(challenge.options),
-  });
+  const prepareChallenge = (challenge: Challenge, effectiveAge = player.ageBand): Challenge => {
+    let options = challenge.options;
+    if (effectiveAge === "7-9" && !["multi", "ordering"].includes(challenge.type) && options.length > 3) {
+      const expected = Array.isArray(challenge.correct) ? challenge.correct : [challenge.correct];
+      const distractors = shuffle(options.filter((option) => !expected.includes(option))).slice(0, Math.max(0, 3 - expected.length));
+      options = [...expected, ...distractors];
+    }
+    const explanation = effectiveAge === "7-9" ? challenge.explanation.split(/(?<=[.!?])\s/)[0] : challenge.explanation;
+    return { ...challenge, explanation, options: shuffle(options) };
+  };
 
-  const startModule = useCallback((module: LearningModule) => {
+  const startModule = useCallback((module: LearningModule, ageOverride?: AgeBand) => {
     const mastery = player.sports[module.sportId]?.mastery ?? {};
+    const effectiveAge = ageOverride ?? player.ageBand;
     const prepared = module.challenges.map((challenge, index) => ({
-      challenge: prepareChallenge(challenge),
+      challenge: prepareChallenge(challenge, effectiveAge),
       index,
       score: mastery[challenge.conceptId]?.attempts
         ? mastery[challenge.conceptId].correct / mastery[challenge.conceptId].attempts
@@ -212,7 +297,7 @@ export default function Home() {
     setRecoveredConcepts([]);
     setSummary(null);
     setScreen("module");
-  }, [player.sports]);
+  }, [player.sports, player.ageBand]);
 
   const checkAnswer = (answers: string[]) => {
     if (!currentChallenge || feedback) return;
@@ -221,6 +306,8 @@ export default function Home() {
       ? expected.every((value, index) => answers[index] === value)
       : expected.length === answers.length && expected.every((value) => answers.includes(value));
     const remediation = currentChallenge.id.includes("remediate");
+
+    if (player.soundOn) playFeedbackTone(correct);
 
     if (correct) {
       const streakBonus = Math.min(sessionStreak * 2, 10);
@@ -254,6 +341,22 @@ export default function Home() {
     }
     setSelectedAnswers([answer]);
     checkAnswer([answer]);
+  };
+
+  const startQuickPlay = () => {
+    const sport = SPORTS.find((item) => item.id === quickSportId) ?? SPORTS[0];
+    setPlayer((current) => ({
+      ...current,
+      profileName: profileDraft.trim() || "Player",
+      ageBand: ageChoice,
+      sports: {
+        ...current.sports,
+        [sport.id]: { ...(current.sports[sport.id] ?? emptySportProgress()), experience: "new", variant: sport.variants[0] },
+      },
+    }));
+    setSelectedSportId(sport.id);
+    setVariantChoice(sport.variants[0]);
+    startModule(moduleList(sport)[0], ageChoice);
   };
 
   const finishModule = () => {
@@ -373,20 +476,34 @@ export default function Home() {
       <main className={`welcome-screen ${player.darkMode ? "dark" : ""}`}>
         <div className="welcome-copy">
           <Logo />
+          <div className="welcome-live"><span /> 13 SPORTS · ONE PLAYBOOK · YOUR PACE</div>
           <span className="eyebrow"><i /> YOUR SPORTS IQ STARTS HERE</span>
           <h1>LEARN THE GAME.<br /><em>SEE IT DIFFERENTLY.</em></h1>
-          <p>Rules, reads, responsibilities, and strategy—built into short sessions that meet you at your level.</p>
+          <p>Pick a sport. Make the call. Learn why it works. Build real game knowledge through short, interactive challenges.</p>
+          <fieldset className="age-picker">
+            <legend>CHOOSE YOUR AGE PATH</legend>
+            <div>{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageChoice === band.value ? "active" : ""} onClick={() => setAgeChoice(band.value)} aria-pressed={ageChoice === band.value}><span>{band.label}</span><strong>{band.title}</strong></button>)}</div>
+            <p>{AGE_BANDS.find((band) => band.value === ageChoice)?.note}</p>
+          </fieldset>
           <form onSubmit={(event) => {
             event.preventDefault();
-            if (profileDraft.trim()) setPlayer((current) => ({ ...current, profileName: profileDraft.trim() }));
+            if (profileDraft.trim()) setPlayer((current) => ({ ...current, profileName: profileDraft.trim(), ageBand: ageChoice }));
           }}>
             <label htmlFor="player-name">WHAT SHOULD WE CALL YOU?</label>
             <div><input id="player-name" value={profileDraft} onChange={(event) => setProfileDraft(event.target.value)} placeholder="Your first name" autoFocus /><button type="submit" disabled={!profileDraft.trim()}>Build my playbook <span>→</span></button></div>
           </form>
           <small>No account required for this preview. Progress saves on this device.</small>
+          <div className="quick-play-box">
+            <div><span>WANT TO PLAY FIRST?</span><strong>Jump into a 60-second sports challenge.</strong></div>
+            <select value={quickSportId} onChange={(event) => setQuickSportId(event.target.value)} aria-label="Choose a Quick Play sport">
+              {SPORTS.map((sport) => <option key={sport.id} value={sport.id}>{sport.name}</option>)}
+            </select>
+            <button type="button" onClick={startQuickPlay}>Quick Play <span>▶</span></button>
+          </div>
         </div>
         <aside className="welcome-board" aria-label="Sports IQ learning preview">
-          <span>YOUR FIRST DRIVE</span>
+          <div className="board-pulse" aria-hidden="true"><i /><i /><i /></div>
+          <span>YOUR FIRST MISSION</span>
           <div className="welcome-step done"><b>01</b><p><strong>Choose a sport</strong><small>Start where you are</small></p></div>
           <div className="welcome-step"><b>02</b><p><strong>Make the read</strong><small>Learn through decisions</small></p></div>
           <div className="welcome-step"><b>03</b><p><strong>Master the concept</strong><small>Build real game IQ</small></p></div>
@@ -404,6 +521,7 @@ export default function Home() {
           <span className="eyebrow">PERSONALIZE YOUR PATH</span>
           <h1>What is your experience with <em>{selectedSport.name}</em>?</h1>
           <p>Your level is stored for this sport only. You can be an expert here and a rookie somewhere else.</p>
+          <div className="age-path-summary"><span>{AGE_BANDS.find((band) => band.value === player.ageBand)?.label}</span><strong>{AGE_BANDS.find((band) => band.value === player.ageBand)?.title}</strong><small>Age controls presentation. Your answer below controls sport difficulty.</small></div>
           <div className="variant-picker" aria-label="Playing format or division">
             {selectedSport.variants.map((variant) => <button key={variant} className={variantChoice === variant ? "active" : ""} onClick={() => setVariantChoice(variant)} aria-pressed={variantChoice === variant}>{variant}</button>)}
           </div>
@@ -433,13 +551,14 @@ export default function Home() {
           <div className="lesson-counters"><span>XP <strong>{sessionXp}</strong></span><span>STREAK <strong>{sessionStreak}×</strong></span><span>MISTAKES <strong>{sessionMistakes}</strong></span></div>
         </header>
         <section className="challenge-stage" aria-live="polite">
+          {feedback?.correct && <div className="xp-burst" key={`xp-${challengeIndex}`}>+{currentChallenge.xp + Math.min(Math.max(0, sessionStreak - 1) * 2, 10)} XP</div>}
           <div className="challenge-heading">
             <div><span>{currentChallenge.label}</span><small>{activeModule.title} · {challengeIndex + 1} of {queue.length}</small></div>
-            <button className="hint-button" onClick={() => window.alert(currentChallenge.hint ?? "Look for the option that best supports the team’s immediate objective.")}>Need a hint?</button>
+            <div className="challenge-tools"><span className={`round-clock ${challengeSeconds <= 10 ? "round-clock--low" : ""}`}>{challengeSeconds}<small>SEC</small></span>{sessionStreak >= 2 && <strong className="combo-chip">{sessionStreak}× COMBO</strong>}<button className="hint-button" onClick={() => window.alert(currentChallenge.hint ?? "Look for the option that best supports the team’s immediate objective.")}>Need a hint?</button></div>
           </div>
           <h1>{currentChallenge.prompt}</h1>
 
-          {currentChallenge.type === "hotspot" && <div className="field-diagram" aria-hidden="true"><div className="end-zone">END ZONE</div><i /><i /><i /><div className="end-zone">END ZONE</div></div>}
+          {(player.ageBand === "7-9" || currentChallenge.type === "hotspot" || currentChallenge.type === "scenario") && <div className="play-visual" aria-label={`Animated ${activeModule.sportId} game situation`}><span>READ THE SPACE</span><div className="play-zone">{Array.from({ length: 6 }, (_, index) => <i key={index} />)}<b /></div><small>Watch the movement, then make the call.</small></div>}
 
           <div className={`challenge-options challenge-options--${currentChallenge.type}`} role="group" aria-label="Answer choices">
             {currentChallenge.options.map((option, index) => {
@@ -464,6 +583,7 @@ export default function Home() {
 
           {feedback && (
             <div className={`feedback-card ${feedback.correct ? "feedback-card--correct" : "feedback-card--wrong"}`}>
+              {feedback.correct && <div className="feedback-sparks" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <i key={index} />)}</div>}
               <div className="feedback-mark">{feedback.correct ? "✓" : "↗"}</div>
               <div><span>{feedback.correct ? missedConcepts.includes(currentChallenge.conceptId) ? "CONCEPT RECOVERED" : "THAT’S THE RIGHT CALL" : "LET’S READ IT AGAIN"}</span><p>{currentChallenge.explanation}</p>{!feedback.correct && <small>Correct answer: {feedback.answer}</small>}</div>
               <button className="next-button" onClick={nextChallenge}>{challengeIndex === queue.length - 1 ? "Finish module" : "Continue"}<span>→</span></button>
@@ -479,6 +599,7 @@ export default function Home() {
     return (
       <main className={`results-shell ${player.darkMode ? "dark" : ""}`}>
         <section className="module-complete-card">
+          <div className="result-celebration" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <i key={index} />)}</div>
           <Logo compact />
           <span className="eyebrow">MODULE COMPLETE</span>
           <h1>YOU’RE SEEING<br /><em>THE FIELD BETTER.</em></h1>
@@ -506,7 +627,7 @@ export default function Home() {
 
     return (
       <main className={`sport-shell ${player.darkMode ? "dark" : ""}`}>
-        <AppHeader player={player} active="learn" onNavigate={(tab) => { setDashboardTab(tab); setScreen("dashboard"); }} onHome={navigateHome} onToggleTheme={() => setPlayer((current) => ({ ...current, darkMode: !current.darkMode }))} />
+        <AppHeader player={player} active="learn" onNavigate={(tab) => { setDashboardTab(tab); setScreen("dashboard"); }} onHome={navigateHome} onToggleTheme={() => setPlayer((current) => ({ ...current, darkMode: !current.darkMode }))} onToggleSound={() => setPlayer((current) => ({ ...current, soundOn: !current.soundOn }))} />
         <section className="sport-hero" style={{ "--sport-color": selectedSport.color, "--sport-soft": selectedSport.softColor } as React.CSSProperties}>
           <button className="back-link" onClick={navigateHome}>← All sports</button>
           <div className="sport-title-row"><div className="sport-mark sport-mark--xl">{selectedSport.mark}</div><div><span>{sportProgress.variant ?? selectedSport.variants[0]} PATH</span><h1>{selectedSport.name}</h1><p>{selectedSport.pathNote ?? (sportProgress.experience === "new" ? "Start with the fundamentals, then unlock position-specific reads." : "Your placement opens Rookie and position-specific learning.")}</p></div></div>
@@ -548,31 +669,35 @@ export default function Home() {
 
   return (
     <main className={`dashboard-shell ${player.darkMode ? "dark" : ""}`}>
-      <AppHeader player={player} active={dashboardTab} onNavigate={setDashboardTab} onHome={navigateHome} onToggleTheme={() => setPlayer((current) => ({ ...current, darkMode: !current.darkMode }))} />
+      <AppHeader player={player} active={dashboardTab} onNavigate={setDashboardTab} onHome={navigateHome} onToggleTheme={() => setPlayer((current) => ({ ...current, darkMode: !current.darkMode }))} onToggleSound={() => setPlayer((current) => ({ ...current, soundOn: !current.soundOn }))} />
       {dashboardTab === "learn" && <DashboardLearn player={player} onChooseSport={chooseSport} onContinue={() => {
         const started = SPORTS.find((sport) => player.sports[sport.id]?.experience) ?? SPORTS[0]; chooseSport(started);
       }} />}
       {dashboardTab === "progress" && <ProgressDashboard player={player} strongest={strongest} weakest={weakest} onChooseSport={chooseSport} />}
       {dashboardTab === "badges" && <BadgesDashboard player={player} />}
-      {dashboardTab === "profile" && <ProfileDashboard player={player} onSaveName={(name) => setPlayer((current) => ({ ...current, profileName: name }))} onReset={() => {
-        if (window.confirm("Reset all Sports IQ progress saved on this device? This cannot be undone.")) setPlayer({ ...DEFAULT_PLAYER, profileName: player.profileName, darkMode: player.darkMode });
+      {dashboardTab === "profile" && <ProfileDashboard player={player} onUpdateIdentity={(updates) => setPlayer((current) => ({ ...current, ...updates }))} onReset={() => {
+        if (window.confirm("Reset all Sports IQ progress saved on this device? This cannot be undone.")) setPlayer({ ...DEFAULT_PLAYER, profileName: player.profileName, darkMode: player.darkMode, soundOn: player.soundOn, avatarMark: player.avatarMark, accentColor: player.accentColor, ageBand: player.ageBand });
       }} />}
     </main>
   );
 }
 
-function AppHeader({ player, active, onNavigate, onHome, onToggleTheme }: { player: Player; active: "learn" | "progress" | "badges" | "profile"; onNavigate: (tab: "learn" | "progress" | "badges" | "profile") => void; onHome: () => void; onToggleTheme: () => void }) {
-  return <header className="app-header"><button className="brand-button" onClick={onHome}><Logo compact /></button><nav aria-label="Main navigation"><button className={active === "learn" ? "active" : ""} onClick={() => onNavigate("learn")}>Learn</button><button className={active === "progress" ? "active" : ""} onClick={() => onNavigate("progress")}>Progress</button><button className={active === "badges" ? "active" : ""} onClick={() => onNavigate("badges")}>Badges</button></nav><div className="header-stats"><button className="streak-pill" onClick={() => onNavigate("progress")}><span>◆</span><strong>{player.streak}</strong><small>DAY STREAK</small></button><button className="xp-pill" onClick={() => onNavigate("progress")}><span>XP</span><strong>{player.totalXp.toLocaleString()}</strong></button><button className="theme-button" onClick={onToggleTheme} aria-label="Toggle dark mode">{player.darkMode ? "☀" : "◐"}</button><button className="avatar-button" onClick={() => onNavigate("profile")} aria-label="Open profile">{player.profileName.slice(0, 1).toUpperCase()}</button></div></header>;
+function AppHeader({ player, active, onNavigate, onHome, onToggleTheme, onToggleSound }: { player: Player; active: "learn" | "progress" | "badges" | "profile"; onNavigate: (tab: "learn" | "progress" | "badges" | "profile") => void; onHome: () => void; onToggleTheme: () => void; onToggleSound: () => void }) {
+  return <header className="app-header"><button className="brand-button" onClick={onHome}><Logo compact /></button><nav aria-label="Main navigation"><button className={active === "learn" ? "active" : ""} onClick={() => onNavigate("learn")}>Learn</button><button className={active === "progress" ? "active" : ""} onClick={() => onNavigate("progress")}>Progress</button><button className={active === "badges" ? "active" : ""} onClick={() => onNavigate("badges")}>Badges</button></nav><div className="header-stats"><button className="streak-pill" onClick={() => onNavigate("progress")}><span>◆</span><strong>{player.streak}</strong><small>DAY STREAK</small></button><button className="xp-pill" onClick={() => onNavigate("progress")}><span>XP</span><strong>{player.totalXp.toLocaleString()}</strong></button><button className="theme-button" onClick={onToggleSound} aria-label={`${player.soundOn ? "Mute" : "Turn on"} game sounds`}>{player.soundOn ? "♪" : "♩"}</button><button className="theme-button" onClick={onToggleTheme} aria-label="Toggle dark mode">{player.darkMode ? "☀" : "◐"}</button><button className="avatar-button" style={{ background: player.accentColor }} onClick={() => onNavigate("profile")} aria-label="Open profile">{player.avatarMark}</button></div></header>;
 }
 
 function DashboardLearn({ player, onChooseSport, onContinue }: { player: Player; onChooseSport: (sport: Sport) => void; onContinue: () => void }) {
   const startedSports = SPORTS.filter((sport) => player.sports[sport.id]?.experience);
   const continueSport = startedSports.sort((a, b) => (player.sports[b.id]?.xp ?? 0) - (player.sports[a.id]?.xp ?? 0))[0];
   const dailyPercent = Math.min(100, (player.dailyXp / DAILY_GOAL) * 100);
+  const spotlightSport = SPORTS[new Date().getDate() % SPORTS.length];
+  const agePath = AGE_BANDS.find((band) => band.value === player.ageBand) ?? AGE_BANDS[1];
   return <>
-    <section className="dashboard-hero"><div><span className="eyebrow"><i /> PLAYBOOK READY</span><h1>GOOD TO SEE YOU,<br /><em>{player.profileName.toUpperCase()}.</em></h1><p>{continueSport ? "Keep building the reads that turn knowledge into game IQ." : "Choose your first sport and start playing in under a minute."}</p></div><aside className="daily-card"><div><span>DAILY GOAL</span><strong>{Math.min(player.dailyXp, DAILY_GOAL)} <small>/ {DAILY_GOAL} XP</small></strong><i><b style={{ width: `${dailyPercent}%` }} /></i><p>{dailyPercent >= 100 ? "Goal complete. Nice work today." : `${DAILY_GOAL - Math.min(player.dailyXp, DAILY_GOAL)} XP to keep your streak moving.`}</p></div><div className="daily-ring" style={{ "--daily-progress": `${dailyPercent}%` } as React.CSSProperties}>{Math.round(dailyPercent)}%</div></aside></section>
+    <section className="dashboard-hero"><div><span className="eyebrow"><i /> {agePath.title.toUpperCase()} PATH · {agePath.label}</span><h1>GOOD TO SEE YOU,<br /><em>{player.profileName.toUpperCase()}.</em></h1><p>{continueSport ? "Your next sports mission is ready. Make the reads, earn the XP, and keep building real game IQ." : "Choose your first arena and start making game decisions in under a minute."}</p><div className="hero-chips"><span>QUICK SESSIONS</span><span>REAL GAME READS</span><span>13 SPORTS</span></div></div><aside className="daily-card"><div><span>TODAY’S MISSION</span><strong>{Math.min(player.dailyXp, DAILY_GOAL)} <small>/ {DAILY_GOAL} XP</small></strong><i><b style={{ width: `${dailyPercent}%` }} /></i><p>{dailyPercent >= 100 ? "Mission complete. You showed up and leveled up." : `${DAILY_GOAL - Math.min(player.dailyXp, DAILY_GOAL)} XP to keep your streak moving.`}</p></div><div className="daily-ring" style={{ "--daily-progress": `${dailyPercent}%` } as React.CSSProperties}>{Math.round(dailyPercent)}%</div></aside></section>
+    <SportTicker />
+    <section className="daily-spotlight" style={{ "--sport-color": spotlightSport.color, "--sport-soft": spotlightSport.softColor } as React.CSSProperties}><div className="spotlight-orbit" aria-hidden="true"><i /><i /><i /></div><div className="sport-mark">{spotlightSport.mark}</div><div><span>DAILY SPORT SPOTLIGHT</span><h2>Can you make the call in {spotlightSport.name}?</h2><p>A quick mission built for your {agePath.title} path.</p></div><button className="primary-button primary-button--small" onClick={() => onChooseSport(spotlightSport)}>Enter mission <span>→</span></button></section>
     {continueSport && <section className="continue-card" style={{ "--sport-color": continueSport.color, "--sport-soft": continueSport.softColor } as React.CSSProperties}><div className="sport-mark">{continueSport.mark}</div><div><span>CONTINUE LEARNING</span><h2>{continueSport.name}</h2><p>{player.sports[continueSport.id].completedModules.length ? "Your next lesson is ready." : "Your personalized path is ready to begin."}</p></div><div className="continue-progress"><strong>{player.sports[continueSport.id].xp} XP</strong><i><b style={{ width: `${Math.min(100, player.sports[continueSport.id].completedModules.length * 18)}%` }} /></i></div><button className="primary-button primary-button--small" onClick={onContinue}>Continue <span>→</span></button></section>}
-    <section className="sports-hub"><div className="section-heading"><span>CHOOSE YOUR ARENA</span><h2>{startedSports.length ? "Keep learning—or add a new sport." : "What do you want to understand?"}</h2><p>Experience and mastery are tracked independently for every sport.</p></div><div className="sport-card-grid">{SPORTS.map((sport) => { const progress = player.sports[sport.id]; const started = !!progress?.experience; const modules = moduleList(sport); const percent = started ? Math.min(100, Math.round((progress.completedModules.length / (modules.length + sport.positions.length)) * 100)) : 0; return <article className="sport-card" key={sport.id} style={{ "--sport-color": sport.color, "--sport-soft": sport.softColor } as React.CSSProperties}><div className="sport-card-top"><div className="sport-mark">{sport.mark}</div><span>{started ? `${percent}%` : "NEW"}</span></div><h3>{sport.name}</h3><p>{sport.variants.slice(0, 3).join(" · ")}</p><div className="sport-card-progress"><i><b style={{ width: `${percent}%` }} /></i><span>{started ? `${progress.xp} XP · ${progress.completedModules.length} modules` : `${sport.positions.length} position paths`}</span></div><button onClick={() => onChooseSport(sport)}>{started ? "Continue path" : "Start sport"}<span>→</span></button></article>; })}</div></section>
+    <section className="sports-hub"><div className="section-heading"><span>CHOOSE YOUR ARENA</span><h2>{startedSports.length ? "Keep learning—or add a new sport." : "Which game do you want to unlock?"}</h2><p>Explore rules, positions, and strategy. Every sport keeps its own level and progress.</p></div><div className="sport-card-grid">{SPORTS.map((sport, index) => { const progress = player.sports[sport.id]; const started = !!progress?.experience; const modules = moduleList(sport); const percent = started ? Math.min(100, Math.round((progress.completedModules.length / (modules.length + sport.positions.length)) * 100)) : 0; return <article className="sport-card" key={sport.id} style={{ "--sport-color": sport.color, "--sport-soft": sport.softColor, "--card-index": index } as React.CSSProperties}><div className="sport-card-top"><div className="sport-mark">{sport.mark}</div><span>{started ? `${percent}%` : "NEW"}</span></div><h3>{sport.name}</h3><p>{sport.variants.slice(0, 3).join(" · ")}</p><div className="sport-card-progress"><i><b style={{ width: `${percent}%` }} /></i><span>{started ? `${progress.xp} XP · ${progress.completedModules.length} modules` : `${sport.positions.length} position paths`}</span></div><button onClick={() => onChooseSport(sport)}>{started ? "Continue path" : "Enter arena"}<span>→</span></button></article>; })}</div></section>
   </>;
 }
 
@@ -581,14 +706,21 @@ function ProgressDashboard({ player, strongest, weakest, onChooseSport }: { play
   const modules = Object.values(player.sports).reduce((sum, sport) => sum + sport.completedModules.length, 0);
   const attempts = Object.values(player.sports).flatMap((sport) => Object.values(sport.mastery));
   const accuracy = attempts.length ? Math.round((attempts.reduce((sum, item) => sum + item.correct, 0) / attempts.reduce((sum, item) => sum + item.attempts, 0)) * 100) : 0;
-  return <section className="dashboard-page"><div className="section-heading"><span>YOUR SEASON</span><h1>Progress that means something.</h1><p>Mastery reflects what you understand—not how fast you clicked through.</p></div><div className="big-stat-grid"><div><span>TOTAL XP</span><strong>{player.totalXp.toLocaleString()}</strong><small>Across {started.length} sports</small></div><div><span>MODULES</span><strong>{modules}</strong><small>Completed sessions</small></div><div><span>ACCURACY</span><strong>{accuracy}%</strong><small>All-time answers</small></div><div><span>STREAK</span><strong>{player.streak}</strong><small>Consecutive days</small></div></div><div className="progress-columns"><div className="progress-panel"><span>SPORTS IN PROGRESS</span>{started.length ? started.map((sport) => { const progress = player.sports[sport.id]; return <button key={sport.id} onClick={() => onChooseSport(sport)}><div className="sport-mark" style={{ "--sport-color": sport.color, "--sport-soft": sport.softColor } as React.CSSProperties}>{sport.mark}</div><div><strong>{sport.name}</strong><small>{progress.xp} XP · {progress.completedModules.length} complete</small></div><span>→</span></button>; }) : <p>Choose a sport to begin your first path.</p>}</div><div className="mastery-panel"><div><span>STRONGEST CONCEPTS</span>{strongest.length ? strongest.map((item) => <p key={item.conceptId}><b>✓</b>{item.conceptId.replaceAll("-", " ")}<small>{masteryLabel(item.mastery)}</small></p>) : <p>Complete a module to reveal strengths.</p>}</div><div><span>FOCUS NEXT</span>{weakest.length ? weakest.map((item) => <p key={item.conceptId}><b>↗</b>{item.conceptId.replaceAll("-", " ")}<small>{masteryLabel(item.mastery)}</small></p>) : <p>No weak concepts recorded yet.</p>}</div></div></div>{player.recentActivity.length > 0 && <div className="recent-panel"><span>RECENT ACTIVITY</span>{player.recentActivity.map((item, index) => <div key={`${item.title}-${index}`}><strong>{item.title}</strong><p>{item.detail}</p><small>{item.date}</small></div>)}</div>}</section>;
+  const rank = playerRank(player.totalXp);
+  const rankIndex = PLAYER_RANKS.findIndex((item) => item.name === rank.name);
+  const nextRank = PLAYER_RANKS[rankIndex + 1];
+  return <section className="dashboard-page"><div className="section-heading"><span>YOUR SEASON</span><h1>Progress that means something.</h1><p>Mastery reflects what you understand—not how fast you clicked through.</p></div><div className="league-ladder"><div><span>YOUR SAFE LEAGUE</span><h2>{rank.name}</h2><p>Compete against milestones—not strangers. No public names, messages, or rankings.</p></div><div className="rank-track">{PLAYER_RANKS.map((item) => <div key={item.name} className={player.totalXp >= item.xp ? "reached" : ""}><i>{item.mark}</i><span>{item.name}</span><small>{item.xp} XP</small></div>)}</div>{nextRank && <strong>{nextRank.xp - player.totalXp} XP TO {nextRank.name.toUpperCase()}</strong>}</div><div className="big-stat-grid"><div><span>TOTAL XP</span><strong>{player.totalXp.toLocaleString()}</strong><small>Across {started.length} sports</small></div><div><span>MODULES</span><strong>{modules}</strong><small>Completed sessions</small></div><div><span>ACCURACY</span><strong>{accuracy}%</strong><small>All-time answers</small></div><div><span>STREAK</span><strong>{player.streak}</strong><small>Consecutive days</small></div></div><div className="progress-columns"><div className="progress-panel"><span>SPORTS IN PROGRESS</span>{started.length ? started.map((sport) => { const progress = player.sports[sport.id]; return <button key={sport.id} onClick={() => onChooseSport(sport)}><div className="sport-mark" style={{ "--sport-color": sport.color, "--sport-soft": sport.softColor } as React.CSSProperties}>{sport.mark}</div><div><strong>{sport.name}</strong><small>{progress.xp} XP · {progress.completedModules.length} complete</small></div><span>→</span></button>; }) : <p>Choose a sport to begin your first path.</p>}</div><div className="mastery-panel"><div><span>STRONGEST CONCEPTS</span>{strongest.length ? strongest.map((item) => <p key={item.conceptId}><b>✓</b>{item.conceptId.replaceAll("-", " ")}<small>{masteryLabel(item.mastery)}</small></p>) : <p>Complete a module to reveal strengths.</p>}</div><div><span>FOCUS NEXT</span>{weakest.length ? weakest.map((item) => <p key={item.conceptId}><b>↗</b>{item.conceptId.replaceAll("-", " ")}<small>{masteryLabel(item.mastery)}</small></p>) : <p>No weak concepts recorded yet.</p>}</div></div></div>{player.recentActivity.length > 0 && <div className="recent-panel"><span>RECENT ACTIVITY</span>{player.recentActivity.map((item, index) => <div key={`${item.title}-${index}`}><strong>{item.title}</strong><p>{item.detail}</p><small>{item.date}</small></div>)}</div>}</section>;
 }
 
 function BadgesDashboard({ player }: { player: Player }) {
-  return <section className="dashboard-page"><div className="section-heading"><span>TROPHY ROOM</span><h1>Earned through real progress.</h1><p>Locked achievements stay visible so you always know what you’re chasing.</p></div><div className="badge-grid">{BADGES.map((badge) => { const earned = player.badges.includes(badge.id); return <article className={earned ? "earned" : "locked"} key={badge.id}><div>{earned ? badge.mark : "?"}</div><span>{earned ? "EARNED" : "LOCKED"}</span><h2>{badge.name}</h2><p>{badge.description}</p></article>; })}</div></section>;
+  return <section className="dashboard-page"><div className="section-heading"><span>TROPHY ROOM</span><h1>Earned through real progress.</h1><p>Badges and player titles unlock as your sports knowledge grows.</p></div><div className="title-locker"><span>PLAYER TITLES</span><div>{PLAYER_RANKS.map((rank) => { const unlocked = player.totalXp >= rank.xp; return <article key={rank.name} className={unlocked ? "unlocked" : "locked"}><i>{unlocked ? rank.mark : "?"}</i><div><small>{unlocked ? "UNLOCKED" : `${rank.xp} XP`}</small><strong>{rank.name}</strong></div></article>; })}</div></div><div className="badge-grid">{BADGES.map((badge) => { const earned = player.badges.includes(badge.id); return <article className={earned ? "earned" : "locked"} key={badge.id}><div>{earned ? badge.mark : "?"}</div><span>{earned ? "EARNED" : "LOCKED"}</span><h2>{badge.name}</h2><p>{badge.description}</p></article>; })}</div></section>;
 }
 
-function ProfileDashboard({ player, onSaveName, onReset }: { player: Player; onSaveName: (name: string) => void; onReset: () => void }) {
+function ProfileDashboard({ player, onUpdateIdentity, onReset }: { player: Player; onUpdateIdentity: (updates: Pick<Player, "profileName" | "avatarMark" | "accentColor" | "ageBand">) => void; onReset: () => void }) {
   const [name, setName] = useState(player.profileName);
-  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Progress currently saves privately on this device.</p></div><div className="profile-layout"><div className="profile-card"><div className="profile-avatar">{player.profileName.slice(0, 1).toUpperCase()}</div><h2>{player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p></div><form onSubmit={(event) => { event.preventDefault(); if (name.trim()) onSaveName(name.trim()); }}><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /><button className="primary-button primary-button--small" type="submit">Save profile <span>→</span></button><hr /><span>DEVICE DATA</span><p>Your experience choices, mastery, XP, badges, and streak are stored in this browser for the current preview.</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
+  const [avatarMark, setAvatarMark] = useState(player.avatarMark);
+  const [accentColor, setAccentColor] = useState(player.accentColor);
+  const [ageBand, setAgeBand] = useState<AgeBand>(player.ageBand);
+  const rank = playerRank(player.totalXp);
+  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Make the playbook yours. Your age path changes pacing and presentation—not what sports you can explore.</p></div><div className="profile-layout"><div className="profile-card" style={{ "--player-color": player.accentColor } as React.CSSProperties}><span className="player-card-rank">{rank.name}</span><div className="profile-avatar">{player.avatarMark}</div><h2>{player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p><div className="player-card-stripe"><span>{player.ageBand}</span><span>{rank.mark}</span><span>SPORTS IQ</span></div></div><form onSubmit={(event) => { event.preventDefault(); if (name.trim()) onUpdateIdentity({ profileName: name.trim(), avatarMark, accentColor, ageBand }); }}><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /><span>AGE PATH</span><div className="profile-age-options">{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageBand === band.value ? "active" : ""} onClick={() => setAgeBand(band.value)}>{band.value}</button>)}</div><span>PLAYER MARK</span><div className="identity-options">{AVATAR_MARKS.map((mark) => <button type="button" key={mark} className={avatarMark === mark ? "active" : ""} onClick={() => setAvatarMark(mark)}>{mark}</button>)}</div><span>TEAM COLOR</span><div className="color-options">{PLAYER_COLORS.map((color) => <button type="button" key={color} className={accentColor === color ? "active" : ""} style={{ background: color }} onClick={() => setAccentColor(color)} aria-label={`Choose team color ${color}`} />)}</div><button className="primary-button primary-button--small" type="submit">Save player card <span>→</span></button><hr /><span>DEVICE DATA</span><p>Your experience choices, mastery, XP, badges, and streak are stored in this browser for the current preview.</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
 }
