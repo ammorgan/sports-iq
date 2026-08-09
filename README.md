@@ -1,18 +1,26 @@
 # Sports IQ
 
-A fast, mobile-first sports trivia game for fans who know more than the score.
+Sports IQ is a progression-based learning game for understanding team sports.
+It teaches rules, reads, responsibilities, terminology, and strategy through
+short interactive modules rather than static lessons or generic trivia.
 
-## The game
+## Current product slice
 
-- Four modes: All Sports, Pro Leagues, College Sports, and Legends & Records
-- Timed questions with speed and streak bonuses
-- Immediate answer explanations
-- Local personal-best tracking
-- Keyboard and touch controls
-- Responsive, reduced-motion-friendly interface
+- 12-sport learning hub with independent experience placement per sport
+- General Sport IQ and Position IQ pathways
+- Six-level progression model from Rookie through Pro
+- Football Fundamentals and Rookie sample modules
+- Every major football position plus representative positions for other sports
+- Multiple choice, multi-select, true/false, ordering, scenario, and field interactions
+- Immediate conversational feedback and in-module remediation
+- Concept-level mastery, adaptive question ordering, XP, streaks, badges, and daily goals
+- Progress, badge, and profile dashboards
+- Device-local persistence and dark mode
+- Responsive keyboard- and touch-friendly interface
 
-Questions live in `app/questions.ts`, separate from the game interface, so the
-question bank can grow without changing the screen logic.
+The structured content model is in `app/learning-data.ts`. UI and game-engine
+logic are in `app/page.tsx`. The content types are generic across sports and can
+grow into database-backed modules without changing the module player.
 
 ## Run locally
 
@@ -22,8 +30,6 @@ Requires Node.js 22.13 or newer and pnpm.
 pnpm install
 pnpm run dev
 ```
-
-Open the local URL printed by the development server.
 
 ## Verify a production build
 

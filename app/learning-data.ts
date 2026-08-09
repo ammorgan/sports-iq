@@ -1,0 +1,784 @@
+export type ExperienceLevel = "new" | "basics" | "casual" | "competitive" | "expert";
+
+export type ChallengeType = "choice" | "truefalse" | "scenario" | "ordering" | "multi" | "hotspot";
+
+export type Challenge = {
+  id: string;
+  conceptId: string;
+  type: ChallengeType;
+  label: string;
+  prompt: string;
+  options: string[];
+  correct: string | string[];
+  explanation: string;
+  hint?: string;
+  xp: number;
+  remediation?: Challenge;
+};
+
+export type LearningModule = {
+  id: string;
+  sportId: string;
+  level: number;
+  pathway: "general" | "position";
+  position?: string;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  challenges: Challenge[];
+};
+
+export type Position = {
+  name: string;
+  group: string;
+  focus: string;
+};
+
+export type Sport = {
+  id: string;
+  name: string;
+  mark: string;
+  color: string;
+  softColor: string;
+  variants: string[];
+  positions: Position[];
+  sample: {
+    teamSize: string;
+    format: string;
+    score: string;
+    field: string;
+  };
+};
+
+export const EXPERIENCE_OPTIONS: Array<{ value: ExperienceLevel; title: string; note: string }> = [
+  { value: "new", title: "I’m completely new", note: "Start with an interactive Fundamentals path." },
+  { value: "basics", title: "I know the basics", note: "Skip the intro and begin at Rookie." },
+  { value: "casual", title: "I’ve played casually", note: "Start with game situations and core reads." },
+  { value: "competitive", title: "I’ve played competitively", note: "Jump into Playmaker-level decisions." },
+  { value: "expert", title: "I’m very experienced / coach-level", note: "Open advanced film-room challenges." },
+];
+
+export const LEVELS = ["Rookie", "Starter", "Playmaker", "All-Star", "Elite", "Pro"];
+
+export const SPORTS: Sport[] = [
+  {
+    id: "football",
+    name: "American Football",
+    mark: "FB",
+    color: "#2f6f68",
+    softColor: "#dcebe6",
+    variants: ["General", "Men’s", "Women’s / Flag"],
+    positions: [
+      { name: "Quarterback", group: "Offense", focus: "read the defense and distribute the ball" },
+      { name: "Running Back", group: "Offense", focus: "press the run track and identify the open crease" },
+      { name: "Fullback", group: "Offense", focus: "lead block and adjust to the first dangerous defender" },
+      { name: "Wide Receiver", group: "Offense", focus: "create leverage and run routes at the correct depth" },
+      { name: "Tight End", group: "Offense", focus: "balance route, run-block, and protection responsibilities" },
+      { name: "Left Tackle", group: "Offensive Line", focus: "protect the edge and maintain pocket width" },
+      { name: "Left Guard", group: "Offensive Line", focus: "secure the interior gap and create movement" },
+      { name: "Center", group: "Offensive Line", focus: "identify the front, snap cleanly, and set protection" },
+      { name: "Right Guard", group: "Offensive Line", focus: "secure the interior gap and create movement" },
+      { name: "Right Tackle", group: "Offensive Line", focus: "protect the edge and anchor against power" },
+      { name: "Defensive Tackle", group: "Defense", focus: "control an interior gap and disrupt the backfield" },
+      { name: "Defensive End", group: "Defense", focus: "set the edge and pressure the passer" },
+      { name: "Inside Linebacker", group: "Defense", focus: "read run-pass keys and fit the correct gap" },
+      { name: "Outside Linebacker", group: "Defense", focus: "force the edge and handle coverage or pressure" },
+      { name: "Cornerback", group: "Defense", focus: "control receiver leverage and defend the route" },
+      { name: "Safety", group: "Defense", focus: "read the formation and protect the deepest threat" },
+      { name: "Kicker", group: "Special Teams", focus: "repeat a consistent approach and contact point" },
+      { name: "Punter", group: "Special Teams", focus: "control operation time, direction, and hang time" },
+      { name: "Long Snapper", group: "Special Teams", focus: "deliver an accurate snap on a repeatable line" },
+      { name: "Returner", group: "Special Teams", focus: "secure the ball and read the return leverage" },
+    ],
+    sample: { teamSize: "11 players per team on the field", format: "Four 15-minute quarters", score: "Touchdowns are worth 6 points", field: "A 100-yard field plus two end zones" },
+  },
+  {
+    id: "basketball",
+    name: "Basketball",
+    mark: "BK",
+    color: "#b66a45",
+    softColor: "#f1e3d8",
+    variants: ["General", "Men’s", "Women’s"],
+    positions: [
+      { name: "Point Guard", group: "Backcourt", focus: "organize the offense and create advantages" },
+      { name: "Shooting Guard", group: "Backcourt", focus: "space the floor and attack closeouts" },
+      { name: "Small Forward", group: "Wing", focus: "score, defend, and connect actions" },
+      { name: "Power Forward", group: "Frontcourt", focus: "screen, rebound, and defend multiple spots" },
+      { name: "Center", group: "Frontcourt", focus: "protect the rim and control the paint" },
+    ],
+    sample: { teamSize: "5 players per team on the court", format: "Four quarters in most leagues", score: "Field goals are worth 2 or 3 points", field: "A court with two baskets and painted lanes" },
+  },
+  {
+    id: "soccer",
+    name: "Soccer",
+    mark: "SC",
+    color: "#4b7a58",
+    softColor: "#e1eadf",
+    variants: ["General", "Men’s", "Women’s"],
+    positions: [
+      { name: "Goalkeeper", group: "Goal", focus: "protect the goal and organize the back line" },
+      { name: "Center Back", group: "Defense", focus: "control central space and defend depth" },
+      { name: "Fullback", group: "Defense", focus: "defend wide areas and support buildup" },
+      { name: "Defensive Midfielder", group: "Midfield", focus: "screen the defense and connect possession" },
+      { name: "Central Midfielder", group: "Midfield", focus: "control tempo and find the next line" },
+      { name: "Winger", group: "Attack", focus: "stretch the field and create chances from width" },
+      { name: "Striker", group: "Attack", focus: "occupy defenders and finish chances" },
+    ],
+    sample: { teamSize: "11 players per team", format: "Two 45-minute halves", score: "A goal is worth 1", field: "A rectangular pitch with a goal at each end" },
+  },
+  {
+    id: "volleyball",
+    name: "Volleyball",
+    mark: "VB",
+    color: "#6b64a2",
+    softColor: "#e8e5f3",
+    variants: ["Indoor", "Beach", "Men’s", "Women’s"],
+    positions: [
+      { name: "Setter", group: "Offense", focus: "run the offense and deliver hittable sets" },
+      { name: "Outside Hitter", group: "Attack", focus: "pass, attack, and score from the left pin" },
+      { name: "Opposite", group: "Attack", focus: "score from the right pin and block the outside" },
+      { name: "Middle Blocker", group: "Front Row", focus: "read the setter and close the block" },
+      { name: "Libero", group: "Back Row", focus: "control serve receive and floor defense" },
+      { name: "Defensive Specialist", group: "Back Row", focus: "serve, pass, and defend targeted rotations" },
+    ],
+    sample: { teamSize: "6 players per indoor team", format: "Best of five sets", score: "Rally scoring to 25 in most sets", field: "A court divided by a net" },
+  },
+  {
+    id: "baseball",
+    name: "Baseball",
+    mark: "BB",
+    color: "#386a8b",
+    softColor: "#dce8ef",
+    variants: ["General", "Youth", "Adult"],
+    positions: [
+      { name: "Pitcher", group: "Battery", focus: "execute pitches and disrupt timing" },
+      { name: "Catcher", group: "Battery", focus: "receive, call pitches, and control the field" },
+      { name: "First Base", group: "Infield", focus: "secure throws and defend the right side" },
+      { name: "Second Base", group: "Infield", focus: "cover range and turn double plays" },
+      { name: "Shortstop", group: "Infield", focus: "control the left-side gap and relay throws" },
+      { name: "Third Base", group: "Infield", focus: "react quickly and guard the line" },
+      { name: "Outfielder", group: "Outfield", focus: "read contact and control extra bases" },
+    ],
+    sample: { teamSize: "9 defensive players", format: "Nine innings", score: "A completed trip around the bases scores 1 run", field: "A diamond with four bases and an outfield" },
+  },
+  {
+    id: "softball",
+    name: "Softball",
+    mark: "SB",
+    color: "#9a6c36",
+    softColor: "#efe5d4",
+    variants: ["Fastpitch", "Slowpitch", "Women’s", "Men’s"],
+    positions: [
+      { name: "Pitcher", group: "Battery", focus: "change speed and location from the circle" },
+      { name: "Catcher", group: "Battery", focus: "receive, call pitches, and control runners" },
+      { name: "Corner Infielder", group: "Infield", focus: "react to bunts and protect the lines" },
+      { name: "Middle Infielder", group: "Infield", focus: "cover range and manage force plays" },
+      { name: "Outfielder", group: "Outfield", focus: "read contact and control extra bases" },
+    ],
+    sample: { teamSize: "9 defensive players in fastpitch", format: "Seven innings", score: "A completed trip around the bases scores 1 run", field: "A compact diamond with a pitching circle" },
+  },
+  {
+    id: "hockey",
+    name: "Ice Hockey",
+    mark: "HK",
+    color: "#4b6f83",
+    softColor: "#dfe9ed",
+    variants: ["General", "Men’s", "Women’s"],
+    positions: [
+      { name: "Center", group: "Forward", focus: "support all three zones and drive the middle" },
+      { name: "Winger", group: "Forward", focus: "create width, forecheck, and finish chances" },
+      { name: "Defenseman", group: "Defense", focus: "protect the middle and start the breakout" },
+      { name: "Goaltender", group: "Goal", focus: "track the puck and control rebounds" },
+    ],
+    sample: { teamSize: "6 players including the goalie", format: "Three 20-minute periods", score: "A goal is worth 1", field: "An ice rink divided into three zones" },
+  },
+  {
+    id: "lacrosse",
+    name: "Lacrosse",
+    mark: "LX",
+    color: "#8a584b",
+    softColor: "#eee0dc",
+    variants: ["Men’s Field", "Women’s Field", "Box"],
+    positions: [
+      { name: "Attack", group: "Offense", focus: "create offense below and around the goal" },
+      { name: "Midfielder", group: "Two-Way", focus: "transition between offense and defense" },
+      { name: "Defense", group: "Defense", focus: "protect the middle and disrupt dodges" },
+      { name: "Goalie", group: "Goal", focus: "save shots and direct the clearing game" },
+      { name: "Faceoff Specialist", group: "Specialist", focus: "win possession at the whistle" },
+    ],
+    sample: { teamSize: "10 players in men’s field lacrosse", format: "Four quarters", score: "A goal is worth 1", field: "A large field with a goal in each offensive end" },
+  },
+  {
+    id: "rugby",
+    name: "Rugby",
+    mark: "RG",
+    color: "#6d7044",
+    softColor: "#e7e7d8",
+    variants: ["Union", "League", "Sevens", "Women’s", "Men’s"],
+    positions: [
+      { name: "Prop", group: "Forwards", focus: "stabilize the scrum and win contact" },
+      { name: "Hooker", group: "Forwards", focus: "throw at lineouts and connect the front row" },
+      { name: "Lock", group: "Forwards", focus: "provide power and contest lineouts" },
+      { name: "Flanker", group: "Forwards", focus: "pressure the breakdown and cover space" },
+      { name: "Scrum-half", group: "Backs", focus: "distribute quickly and control tempo" },
+      { name: "Fly-half", group: "Backs", focus: "direct shape and choose territory or attack" },
+      { name: "Center", group: "Backs", focus: "break the line and organize midfield defense" },
+      { name: "Wing", group: "Backs", focus: "finish space and defend the edge" },
+      { name: "Fullback", group: "Backs", focus: "cover kicks and counterattack" },
+    ],
+    sample: { teamSize: "15 players in rugby union", format: "Two 40-minute halves", score: "A try is worth 5 points in union", field: "A rectangular pitch with in-goal areas" },
+  },
+  {
+    id: "field-hockey",
+    name: "Field Hockey",
+    mark: "FH",
+    color: "#94714a",
+    softColor: "#eee5d8",
+    variants: ["General", "Men’s", "Women’s"],
+    positions: [
+      { name: "Forward", group: "Attack", focus: "stretch the defense and create circle entries" },
+      { name: "Midfielder", group: "Midfield", focus: "connect lines and manage transition" },
+      { name: "Defender", group: "Defense", focus: "protect the circle and start possession" },
+      { name: "Goalkeeper", group: "Goal", focus: "protect the goal and organize defenders" },
+    ],
+    sample: { teamSize: "11 players per team", format: "Four 15-minute quarters", score: "A goal is worth 1", field: "A turf pitch with shooting circles" },
+  },
+  {
+    id: "water-polo",
+    name: "Water Polo",
+    mark: "WP",
+    color: "#397a88",
+    softColor: "#dcecef",
+    variants: ["General", "Men’s", "Women’s"],
+    positions: [
+      { name: "Center", group: "Offense", focus: "establish position near the goal" },
+      { name: "Driver", group: "Offense", focus: "create movement and attack open water" },
+      { name: "Point", group: "Perimeter", focus: "organize the offense from the top" },
+      { name: "Center Defender", group: "Defense", focus: "deny inside position without fouling" },
+      { name: "Goalkeeper", group: "Goal", focus: "protect angles and direct the defense" },
+    ],
+    sample: { teamSize: "7 players including the goalkeeper", format: "Four quarters", score: "A goal is worth 1", field: "A marked pool with floating goals" },
+  },
+  {
+    id: "cricket",
+    name: "Cricket",
+    mark: "CR",
+    color: "#6f526f",
+    softColor: "#eadfeb",
+    variants: ["Test", "One Day", "T20", "Women’s", "Men’s"],
+    positions: [
+      { name: "Batter", group: "Batting", focus: "protect the wicket and score efficiently" },
+      { name: "Fast Bowler", group: "Bowling", focus: "use pace, seam, and length to create chances" },
+      { name: "Spin Bowler", group: "Bowling", focus: "use flight and turn to deceive the batter" },
+      { name: "Wicketkeeper", group: "Fielding", focus: "collect deliveries and create dismissals" },
+      { name: "Fielder", group: "Fielding", focus: "protect scoring areas and convert chances" },
+      { name: "Captain", group: "Leadership", focus: "set fields and manage bowlers strategically" },
+    ],
+    sample: { teamSize: "11 players per side", format: "Format determines overs and duration", score: "Batters score runs between wickets or at the boundary", field: "An oval field centered on a 22-yard pitch" },
+  },
+];
+
+const remediationPlayers: Challenge = {
+  id: "fb-remediate-players",
+  conceptId: "fb-team-size",
+  type: "scenario",
+  label: "Second look",
+  prompt: "Your offense has a QB, RB, TE, five linemen, and three wide receivers. How many players are in the unit?",
+  options: ["10", "11", "12", "13"],
+  correct: "11",
+  explanation: "Add the full unit: 1 + 1 + 1 + 5 + 3 = 11. You recovered the concept.",
+  xp: 12,
+};
+
+export const FOOTBALL_MODULES: LearningModule[] = [
+  {
+    id: "fb-fundamentals-field",
+    sportId: "football",
+    level: 0,
+    pathway: "general",
+    title: "Meet the Field",
+    description: "Players, field layout, game clock, and the shape of a football game.",
+    estimatedMinutes: 4,
+    challenges: [
+      {
+        id: "fb-field-players",
+        conceptId: "fb-team-size",
+        type: "choice",
+        label: "Know the unit",
+        prompt: "How many players does one football team normally have on the field at a time?",
+        options: ["9", "10", "11", "12"],
+        correct: "11",
+        explanation: "A complete offensive, defensive, or special-teams unit normally has 11 players on the field.",
+        hint: "Think of one complete offensive unit.",
+        xp: 10,
+        remediation: remediationPlayers,
+      },
+      {
+        id: "fb-field-zones",
+        conceptId: "fb-field-layout",
+        type: "hotspot",
+        label: "Tap the field",
+        prompt: "Your team must cross which line to score a touchdown?",
+        options: ["Sideline", "Goal line", "50-yard line", "Hash mark"],
+        correct: "Goal line",
+        explanation: "The ball must break the plane of the opponent’s goal line while controlled by a player.",
+        xp: 12,
+      },
+      {
+        id: "fb-field-quarters",
+        conceptId: "fb-game-clock",
+        type: "choice",
+        label: "Game clock",
+        prompt: "How is a regulation football game divided?",
+        options: ["Two halves only", "Three periods", "Four quarters", "Nine innings"],
+        correct: "Four quarters",
+        explanation: "Football uses four quarters. Halftime separates the second and third quarters.",
+        xp: 10,
+      },
+      {
+        id: "fb-field-lines",
+        conceptId: "fb-line-of-scrimmage",
+        type: "truefalse",
+        label: "True or false",
+        prompt: "The line of scrimmage is the imaginary line running through the ball before the snap.",
+        options: ["True", "False"],
+        correct: "True",
+        explanation: "That line separates the two teams before the play and anchors every formation.",
+        xp: 10,
+      },
+      {
+        id: "fb-field-start",
+        conceptId: "fb-start-play",
+        type: "ordering",
+        label: "Put it in order",
+        prompt: "Arrange the basic start of an offensive play.",
+        options: ["Players align", "Quarterback calls cadence", "Center snaps", "Play unfolds"],
+        correct: ["Players align", "Quarterback calls cadence", "Center snaps", "Play unfolds"],
+        explanation: "Alignment establishes legal positions, the cadence coordinates timing, and the snap makes the ball live.",
+        xp: 15,
+      },
+      {
+        id: "fb-field-offense",
+        conceptId: "fb-offense-defense",
+        type: "choice",
+        label: "Who has the ball?",
+        prompt: "Which unit begins a normal play in possession of the ball?",
+        options: ["Offense", "Defense", "Officials", "Coverage team"],
+        correct: "Offense",
+        explanation: "The offense possesses the ball and tries to advance it; the defense tries to stop or take it away.",
+        xp: 10,
+      },
+      {
+        id: "fb-field-equipment",
+        conceptId: "fb-equipment",
+        type: "multi",
+        label: "Select all that apply",
+        prompt: "Which pieces are standard protective equipment in tackle football?",
+        options: ["Helmet", "Shoulder pads", "Shin guards", "Mouthguard"],
+        correct: ["Helmet", "Shoulder pads", "Mouthguard"],
+        explanation: "Helmets, shoulder pads, and mouthguards are standard. Shin guards belong to sports such as soccer.",
+        xp: 15,
+      },
+      {
+        id: "fb-field-end",
+        conceptId: "fb-game-end",
+        type: "scenario",
+        label: "What happens next?",
+        prompt: "The fourth-quarter clock reaches 0:00 and one team is ahead. What normally happens?",
+        options: ["The game ends", "Every game goes to overtime", "A fifth quarter begins", "The score resets"],
+        correct: "The game ends",
+        explanation: "If the final period ends without a tie requiring overtime, the team ahead wins.",
+        xp: 12,
+      },
+    ],
+  },
+  {
+    id: "fb-fundamentals-score",
+    sportId: "football",
+    level: 0,
+    pathway: "general",
+    title: "Score & Possession",
+    description: "Downs, first downs, scoring, turnovers, and how teams earn another series.",
+    estimatedMinutes: 5,
+    challenges: [
+      {
+        id: "fb-score-touchdown",
+        conceptId: "fb-scoring",
+        type: "choice",
+        label: "Points on the board",
+        prompt: "How many points is a touchdown worth before the try?",
+        options: ["3", "6", "7", "8"],
+        correct: "6",
+        explanation: "A touchdown is worth six points. The offense then attempts a one- or two-point try.",
+        xp: 10,
+      },
+      {
+        id: "fb-score-downs",
+        conceptId: "fb-downs",
+        type: "choice",
+        label: "Move the chains",
+        prompt: "How many downs does an offense normally get to gain 10 yards?",
+        options: ["Three", "Four", "Five", "Unlimited"],
+        correct: "Four",
+        explanation: "The offense receives four downs. Gaining 10 yards earns a fresh set of downs.",
+        xp: 10,
+      },
+      {
+        id: "fb-score-first-down",
+        conceptId: "fb-downs",
+        type: "scenario",
+        label: "Read the situation",
+        prompt: "It is 2nd & 6 and the offense gains 8 yards. What is the next down?",
+        options: ["3rd & 2", "1st & 10", "4th & 6", "Turnover"],
+        correct: "1st & 10",
+        explanation: "The offense gained more than the six yards needed, so the chains reset to 1st & 10.",
+        xp: 12,
+      },
+      {
+        id: "fb-score-field-goal",
+        conceptId: "fb-scoring",
+        type: "choice",
+        label: "Take the points",
+        prompt: "A successful field goal is worth how many points?",
+        options: ["1", "2", "3", "6"],
+        correct: "3",
+        explanation: "A field goal is worth three points and is often attempted on fourth down within range.",
+        xp: 10,
+      },
+      {
+        id: "fb-score-turnover",
+        conceptId: "fb-turnovers",
+        type: "multi",
+        label: "Select all that apply",
+        prompt: "Which plays can immediately give the defense possession?",
+        options: ["Interception", "Recovered fumble", "Incomplete pass", "Touchback after every play"],
+        correct: ["Interception", "Recovered fumble"],
+        explanation: "An interception or a defensive fumble recovery changes possession immediately.",
+        xp: 15,
+      },
+      {
+        id: "fb-score-punt",
+        conceptId: "fb-field-position",
+        type: "scenario",
+        label: "Make the call",
+        prompt: "It is 4th & 12 near your own end zone. Why might the offense punt?",
+        options: ["To improve field position", "To score six points", "To stop the game", "To keep the same possession"],
+        correct: "To improve field position",
+        explanation: "A punt gives up possession but pushes the opponent farther from the end zone.",
+        xp: 12,
+      },
+      {
+        id: "fb-score-safety",
+        conceptId: "fb-scoring",
+        type: "truefalse",
+        label: "True or false",
+        prompt: "A safety is worth two points to the defending team.",
+        options: ["True", "False"],
+        correct: "True",
+        explanation: "A safety usually occurs when the offense is responsible for the ball becoming dead in its own end zone.",
+        xp: 10,
+      },
+      {
+        id: "fb-score-drive",
+        conceptId: "fb-drive",
+        type: "ordering",
+        label: "Build the drive",
+        prompt: "Put this successful scoring drive in order.",
+        options: ["Gain a first down", "Cross midfield", "Reach the red zone", "Score a touchdown"],
+        correct: ["Gain a first down", "Cross midfield", "Reach the red zone", "Score a touchdown"],
+        explanation: "Drives are built by extending possession, winning field position, entering scoring range, and finishing.",
+        xp: 15,
+      },
+    ],
+  },
+  {
+    id: "fb-rookie-units",
+    sportId: "football",
+    level: 1,
+    pathway: "general",
+    title: "Three Units, One Team",
+    description: "Recognize offensive, defensive, and special-teams responsibilities.",
+    estimatedMinutes: 5,
+    challenges: [
+      {
+        id: "fb-unit-qb",
+        conceptId: "fb-positions",
+        type: "choice",
+        label: "Identify the role",
+        prompt: "Which player usually receives the snap and begins the offense’s decision?",
+        options: ["Quarterback", "Safety", "Punter", "Defensive end"],
+        correct: "Quarterback",
+        explanation: "The quarterback receives most snaps, then hands off, passes, or runs based on the play and read.",
+        xp: 10,
+      },
+      {
+        id: "fb-unit-line",
+        conceptId: "fb-positions",
+        type: "multi",
+        label: "Select all that apply",
+        prompt: "Which jobs belong to the offensive line?",
+        options: ["Protect the passer", "Create run lanes", "Cover wide receivers", "Handle protection calls"],
+        correct: ["Protect the passer", "Create run lanes", "Handle protection calls"],
+        explanation: "The line protects, blocks for the run, and communicates how the unit will account for defenders.",
+        xp: 15,
+      },
+      {
+        id: "fb-unit-secondary",
+        conceptId: "fb-defense-levels",
+        type: "choice",
+        label: "Know the defense",
+        prompt: "Cornerbacks and safeties make up which level of the defense?",
+        options: ["Secondary", "Offensive line", "Backfield offense", "Specialists"],
+        correct: "Secondary",
+        explanation: "The secondary defends routes, supports the run, and protects deep space.",
+        xp: 10,
+      },
+      {
+        id: "fb-unit-lb",
+        conceptId: "fb-defense-reads",
+        type: "scenario",
+        label: "What’s your read?",
+        prompt: "A linebacker sees the offensive line fire forward low. What should that suggest first?",
+        options: ["Run action", "Punt", "Field goal", "End of game"],
+        correct: "Run action",
+        explanation: "Low, forward movement from the line is a primary run key. The linebacker should prepare to fit a gap.",
+        xp: 15,
+      },
+      {
+        id: "fb-unit-kick",
+        conceptId: "fb-special-teams",
+        type: "multi",
+        label: "Special teams check",
+        prompt: "Which plays use special teams?",
+        options: ["Kickoff", "Punt", "Field goal", "Routine first-down handoff"],
+        correct: ["Kickoff", "Punt", "Field goal"],
+        explanation: "Special teams handles kicking plays and the returns or blocks attached to them.",
+        xp: 15,
+      },
+      {
+        id: "fb-unit-balance",
+        conceptId: "fb-team-phases",
+        type: "ordering",
+        label: "Change of possession",
+        prompt: "After your defense forces a punt, arrange the next phases.",
+        options: ["Punt return unit enters", "Returner secures the ball", "Offense takes the field", "New drive begins"],
+        correct: ["Punt return unit enters", "Returner secures the ball", "Offense takes the field", "New drive begins"],
+        explanation: "The return phase handles the punt, then the offense begins a new possession where the return ends.",
+        xp: 15,
+      },
+    ],
+  },
+];
+
+const CENTER_CHALLENGES: Challenge[] = [
+  {
+    id: "center-front",
+    conceptId: "center-front-id",
+    type: "scenario",
+    label: "Film room",
+    prompt: "You are the center. A nose tackle shades your right shoulder and a linebacker walks into the left A-gap. What should you identify first?",
+    options: ["The defensive front and protection point", "The crowd noise", "The receiver split", "The game uniform"],
+    correct: "The defensive front and protection point",
+    explanation: "The center must identify immediate threats and help set how the line will account for the front.",
+    xp: 15,
+  },
+  {
+    id: "center-snap",
+    conceptId: "center-snap",
+    type: "ordering",
+    label: "Operation order",
+    prompt: "Arrange the center’s pre-snap process.",
+    options: ["Identify the front", "Communicate the call", "Set the grip", "Snap on cadence"],
+    correct: ["Identify the front", "Communicate the call", "Set the grip", "Snap on cadence"],
+    explanation: "Recognition and communication come first; the snap then starts the physical assignment.",
+    xp: 15,
+  },
+  {
+    id: "center-agap",
+    conceptId: "center-gaps",
+    type: "choice",
+    label: "Know the gap",
+    prompt: "Where is the A-gap?",
+    options: ["Between center and guard", "Outside the tight end", "Between guard and tackle", "Behind the safety"],
+    correct: "Between center and guard",
+    explanation: "The A-gaps are the two interior spaces immediately beside the center.",
+    xp: 10,
+  },
+  {
+    id: "center-double",
+    conceptId: "center-combo",
+    type: "scenario",
+    label: "Make the call",
+    prompt: "On an inside run, you and the guard are responsible for a defensive tackle before one climbs to a linebacker. What is this?",
+    options: ["Combination block", "Solo route", "Punt protection", "Man coverage"],
+    correct: "Combination block",
+    explanation: "Two linemen create movement together, then one comes off to the second-level defender.",
+    xp: 15,
+  },
+  {
+    id: "center-pass",
+    conceptId: "center-protection",
+    type: "multi",
+    label: "Protection scan",
+    prompt: "Which threats should a center communicate before a pass play?",
+    options: ["Interior rushers", "Possible blitzers", "Protection direction", "The halftime score only"],
+    correct: ["Interior rushers", "Possible blitzers", "Protection direction"],
+    explanation: "Good protection begins with a shared picture of the front, possible pressure, and the line’s direction.",
+    xp: 15,
+  },
+  {
+    id: "center-finish",
+    conceptId: "center-technique",
+    type: "truefalse",
+    label: "True or false",
+    prompt: "A clean snap matters, but the center’s assignment continues immediately after the ball leaves the hand.",
+    options: ["True", "False"],
+    correct: "True",
+    explanation: "The center must transition from snapping to blocking without losing leverage or timing.",
+    xp: 10,
+  },
+];
+
+export function buildPositionModule(sport: Sport, position: Position): LearningModule {
+  if (sport.id === "football" && position.name === "Center") {
+    return {
+      id: "fb-position-center-foundations",
+      sportId: sport.id,
+      level: 1,
+      pathway: "position",
+      position: position.name,
+      title: "Center Foundations",
+      description: "Front identification, communication, snap mechanics, and interior responsibility.",
+      estimatedMinutes: 5,
+      challenges: CENTER_CHALLENGES,
+    };
+  }
+
+  const responsibility = position.focus.charAt(0).toUpperCase() + position.focus.slice(1);
+  return {
+    id: `${sport.id}-position-${position.name.toLowerCase().replaceAll(" ", "-")}-intro`,
+    sportId: sport.id,
+    level: 1,
+    pathway: "position",
+    position: position.name,
+    title: `${position.name} Foundations`,
+    description: `A representative ${position.name} module focused on recognition and responsibility.`,
+    estimatedMinutes: 3,
+    challenges: [
+      {
+        id: `${sport.id}-${position.name}-role`,
+        conceptId: `${sport.id}-${position.name}-role`,
+        type: "choice",
+        label: "Know your job",
+        prompt: `Which description best matches the ${position.name}’s core responsibility?`,
+        options: [responsibility, "Ignore team shape and follow the ball", "Focus only on the scoreboard", "Wait for a teammate to make every call"],
+        correct: responsibility,
+        explanation: `At its core, the ${position.name} must ${position.focus}.`,
+        xp: 10,
+      },
+      {
+        id: `${sport.id}-${position.name}-awareness`,
+        conceptId: `${sport.id}-${position.name}-awareness`,
+        type: "truefalse",
+        label: "Position IQ",
+        prompt: `A strong ${position.name} reads teammates and opponents before reacting.`,
+        options: ["True", "False"],
+        correct: "True",
+        explanation: "Position IQ starts with an early picture of the situation, then a decisive response.",
+        xp: 10,
+      },
+      {
+        id: `${sport.id}-${position.name}-decision`,
+        conceptId: `${sport.id}-${position.name}-decision`,
+        type: "scenario",
+        label: "What’s your read?",
+        prompt: `As the ${position.name}, what is the best first step when the opponent changes shape unexpectedly?`,
+        options: ["Scan, communicate, then adjust", "Freeze and wait", "Abandon the position", "Repeat the same action without looking"],
+        correct: "Scan, communicate, then adjust",
+        explanation: "Good players gather the new picture, communicate what changed, and adjust within the team plan.",
+        xp: 15,
+      },
+      {
+        id: `${sport.id}-${position.name}-sequence`,
+        conceptId: `${sport.id}-${position.name}-process`,
+        type: "ordering",
+        label: "Decision process",
+        prompt: "Arrange a high-IQ decision sequence.",
+        options: ["Scan", "Recognize", "Communicate", "Execute"],
+        correct: ["Scan", "Recognize", "Communicate", "Execute"],
+        explanation: "Seeing early creates time to recognize, communicate, and execute with confidence.",
+        xp: 15,
+      },
+    ],
+  };
+}
+
+export function buildSportIntroModule(sport: Sport): LearningModule {
+  const otherSports = SPORTS.filter((item) => item.id !== sport.id).slice(0, 3);
+  return {
+    id: `${sport.id}-fundamentals-intro`,
+    sportId: sport.id,
+    level: 0,
+    pathway: "general",
+    title: `${sport.name} in Motion`,
+    description: "A representative interactive fundamentals module for this sport’s growing curriculum.",
+    estimatedMinutes: 3,
+    challenges: [
+      {
+        id: `${sport.id}-team-size`,
+        conceptId: `${sport.id}-team-size`,
+        type: "choice",
+        label: "Know the team",
+        prompt: `Which statement correctly describes a standard ${sport.name} team in play?`,
+        options: [sport.sample.teamSize, ...otherSports.map((item) => item.sample.teamSize)],
+        correct: sport.sample.teamSize,
+        explanation: `${sport.name}: ${sport.sample.teamSize}.`,
+        xp: 10,
+      },
+      {
+        id: `${sport.id}-format`,
+        conceptId: `${sport.id}-game-format`,
+        type: "choice",
+        label: "Game structure",
+        prompt: `How is ${sport.name} normally structured?`,
+        options: [sport.sample.format, ...otherSports.map((item) => item.sample.format)],
+        correct: sport.sample.format,
+        explanation: `${sport.name} uses this basic format: ${sport.sample.format}.`,
+        xp: 10,
+      },
+      {
+        id: `${sport.id}-score`,
+        conceptId: `${sport.id}-scoring`,
+        type: "choice",
+        label: "Scoring basics",
+        prompt: `Which scoring statement belongs to ${sport.name}?`,
+        options: [sport.sample.score, ...otherSports.map((item) => item.sample.score)],
+        correct: sport.sample.score,
+        explanation: sport.sample.score,
+        xp: 10,
+      },
+      {
+        id: `${sport.id}-field`,
+        conceptId: `${sport.id}-playing-area`,
+        type: "hotspot",
+        label: "Know the arena",
+        prompt: `Which playing-area description fits ${sport.name}?`,
+        options: [sport.sample.field, ...otherSports.map((item) => item.sample.field)],
+        correct: sport.sample.field,
+        explanation: `${sport.name} is played on ${sport.sample.field.toLowerCase()}.`,
+        xp: 12,
+      },
+    ],
+  };
+}
+
+export const BADGES = [
+  { id: "first-steps", name: "First Steps", description: "Complete your first module.", mark: "01" },
+  { id: "perfect-drive", name: "Perfect Drive", description: "Finish a module without a mistake.", mark: "PD" },
+  { id: "comeback-kid", name: "Comeback Kid", description: "Recover a missed concept later in the module.", mark: "CK" },
+  { id: "position-master", name: "Position Master", description: "Complete a position pathway.", mark: "PM" },
+  { id: "rookie-graduate", name: "Rookie Graduate", description: "Complete the Rookie level.", mark: "RG" },
+  { id: "multi-sport", name: "Multi-Sport Athlete", description: "Begin three different sports.", mark: "MS" },
+  { id: "iron-mind", name: "Iron Mind", description: "Complete ten modules.", mark: "IM" },
+  { id: "sport-scholar", name: "Sport Scholar", description: "Master every major pathway in one sport.", mark: "SS" },
+];
