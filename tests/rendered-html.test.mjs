@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -37,4 +38,12 @@ test("server-renders the Sports IQ experience", async () => {
   assert.match(html, /College Sports/);
   assert.match(html, /Legends &amp; Records/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+});
+
+test("every category can supply a full ten-question round", async () => {
+  const source = await readFile(new URL("../app/questions.ts", import.meta.url), "utf8");
+  for (const category of ["pro", "college", "legends"]) {
+    const matches = source.match(new RegExp(`category: "${category}"`, "g")) ?? [];
+    assert.ok(matches.length >= 10, `${category} has only ${matches.length} questions`);
+  }
 });
