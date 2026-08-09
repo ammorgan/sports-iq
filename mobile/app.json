@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Sports IQ",
+    "slug": "sports-iq",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#12233b"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ammorgan.sportsiq"
+    },
+    "android": {
+      "package": "com.ammorgan.sportsiq",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#12233b"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

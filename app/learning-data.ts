@@ -37,6 +37,19 @@ export type Position = {
   focus: string;
 };
 
+type IntroQuestion = {
+  id: "team-size" | "format" | "score" | "field";
+  type: "choice" | "hotspot";
+  label: string;
+  prompt: string;
+  youngPrompt?: string;
+  options: string[];
+  correct: string;
+  explanation: string;
+  youngExplanation?: string;
+  xp: number;
+};
+
 export type Sport = {
   id: string;
   name: string;
@@ -46,12 +59,7 @@ export type Sport = {
   variants: string[];
   pathNote?: string;
   positions: Position[];
-  sample: {
-    teamSize: string;
-    format: string;
-    score: string;
-    field: string;
-  };
+  introQuestions: IntroQuestion[];
 };
 
 export const EXPERIENCE_OPTIONS: Array<{ value: ExperienceLevel; title: string; note: string }> = [
@@ -95,7 +103,12 @@ export const SPORTS: Sport[] = [
       { name: "Long Snapper", group: "Special Teams", focus: "deliver an accurate snap on a repeatable line" },
       { name: "Returner", group: "Special Teams", focus: "secure the ball and read the return leverage" },
     ],
-    sample: { teamSize: "11 players per team on the field", format: "Four 15-minute quarters", score: "Touchdowns are worth 6 points", field: "A 100-yard field plus two end zones" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard 11-player tackle football, how many players from each team are normally on the field during a play?", youngPrompt: "In tackle football, how many players from one team are on the field during a play?", options: ["11 players from each team (22 players total)", "11 players total", "22 players from each team", "The number changes every play"], correct: "11 players from each team (22 players total)", explanation: "Each team normally fields 11 players, so there are 22 players total when both teams have a full unit on the field.", youngExplanation: "Each team uses 11 players, making 22 players total.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is a regulation adult tackle football game normally divided?", options: ["Four quarters", "Two halves with no quarters", "Three periods", "Nine innings"], correct: "Four quarters", explanation: "Adult tackle football uses four quarters, although quarter length can vary by league.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "Before the extra-point try, how many points is a touchdown worth?", options: ["6 points", "3 points", "2 points", "1 point"], correct: "6 points", explanation: "A touchdown is worth 6 points before the offense attempts a one- or two-point try.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a regulation tackle football field?", options: ["100 yards between the goal lines, plus two end zones", "A diamond with four bases", "A court divided by a net", "An oval centered on a pitch"], correct: "100 yards between the goal lines, plus two end zones", explanation: "The playing field is 100 yards between the goal lines, with an end zone beyond each goal line.", xp: 12 },
+    ],
   },
   {
     id: "flag-football",
@@ -114,7 +127,12 @@ export const SPORTS: Sport[] = [
       { name: "Short-Zone Defender", group: "Defense", focus: "close throwing windows and break safely on the ball" },
       { name: "Deep Defender", group: "Defense", focus: "protect vertical space and prevent explosive plays" },
     ],
-    sample: { teamSize: "5 or 7 players per team in common rulesets", format: "Usually two halves, with timing set by the league", score: "Touchdowns are commonly worth 6 points", field: "A shortened football field with end zones and no tackling" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "Which statement is most accurate about flag football team size?", youngPrompt: "Flag football can use different team sizes. Which answer is true?", options: ["It depends on the ruleset; 5-on-5 and 7-on-7 are common", "Every league uses exactly 11 players per team", "Every league uses exactly 5 players per team", "Both teams share a total of 7 players"], correct: "It depends on the ruleset; 5-on-5 and 7-on-7 are common", explanation: "Flag football varies by ruleset: international competition uses 5-on-5, while 7-on-7 is also common in U.S. leagues.", youngExplanation: "Flag football often uses 5 players or 7 players on each team.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "Which statement best describes the flag football game clock?", options: ["Many leagues use two halves, but exact timing depends on the ruleset", "Every game has four 15-minute quarters", "Every game lasts exactly 90 minutes", "Flag football has nine innings"], correct: "Many leagues use two halves, but exact timing depends on the ruleset", explanation: "Many flag football formats use two halves, but the length and clock rules are set by the league or tournament.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "In many flag football rulesets, how many points is a touchdown worth?", options: ["6 points", "3 points", "2 points", "1 point"], correct: "6 points", explanation: "A touchdown is commonly worth 6 points, while the value and location of the try can vary by ruleset.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which statement best describes a common flag football field?", options: ["It is usually shorter or narrower than a tackle field, with dimensions set by the ruleset", "It must always be a full 100 yards between goal lines", "It is a court with two baskets", "It is a diamond with four bases"], correct: "It is usually shorter or narrower than a tackle field, with dimensions set by the ruleset", explanation: "Flag football commonly uses a shorter or narrower field, but exact dimensions depend on whether the game is 5-on-5, 7-on-7, youth, or another format.", xp: 12 },
+    ],
   },
   {
     id: "basketball",
@@ -130,7 +148,12 @@ export const SPORTS: Sport[] = [
       { name: "Power Forward", group: "Frontcourt", focus: "screen, rebound, and defend multiple spots" },
       { name: "Center", group: "Frontcourt", focus: "protect the rim and control the paint" },
     ],
-    sample: { teamSize: "5 players per team on the court", format: "Four quarters in most leagues", score: "Field goals are worth 2 or 3 points", field: "A court with two baskets and painted lanes" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard five-on-five basketball, how many players from each team are on the court during play?", youngPrompt: "How many players from one basketball team are on the court?", options: ["5 per team (10 players total)", "5 players total", "10 per team", "11 per team"], correct: "5 per team (10 players total)", explanation: "Each team has 5 players on the court, so a full five-on-five game has 10 players on the court.", youngExplanation: "Each team uses 5 players, making 10 players total.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "Under FIBA, NBA, and WNBA-style rules, how is a game divided?", options: ["Four quarters", "Two 45-minute halves", "Three periods", "Nine innings"], correct: "Four quarters", explanation: "FIBA, NBA, and WNBA games use four quarters; some competitions, including NCAA men’s basketball, use two halves.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "How many points is a made shot from beyond the three-point line worth?", options: ["3 points", "2 points", "1 point", "6 points"], correct: "3 points", explanation: "A successful shot from beyond the three-point line is worth 3 points.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a basketball court?", options: ["A rectangular court with one basket at each end", "A diamond with four bases", "A field with two end zones", "An oval centered on a pitch"], correct: "A rectangular court with one basket at each end", explanation: "Basketball is played on a rectangular court with one basket at each end.", xp: 12 },
+    ],
   },
   {
     id: "soccer",
@@ -148,7 +171,12 @@ export const SPORTS: Sport[] = [
       { name: "Winger", group: "Attack", focus: "stretch the field and create chances from width" },
       { name: "Striker", group: "Attack", focus: "occupy defenders and finish chances" },
     ],
-    sample: { teamSize: "11 players per team", format: "Two 45-minute halves", score: "A goal is worth 1", field: "A rectangular pitch with a goal at each end" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard 11-a-side soccer, how many players may each team have on the field, including the goalkeeper?", youngPrompt: "How many players can one soccer team have on the field, including the goalkeeper?", options: ["11 players from each team (22 players total)", "11 players total between both teams", "22 players from each team", "10 players from each team, plus a shared goalkeeper"], correct: "11 players from each team (22 players total)", explanation: "Each team may have up to 11 players on the field, including one goalkeeper, so there can be 22 players total.", youngExplanation: "Each team can have 11 players, making 22 players total.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is a standard adult soccer match normally divided?", options: ["Two 45-minute halves", "Four 15-minute quarters", "Three 20-minute periods", "Nine innings"], correct: "Two 45-minute halves", explanation: "A standard adult match has two 45-minute halves, plus time added by the referee for stoppages.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "When the ball legally crosses the goal line between the posts, what is added to the score?", options: ["1 goal", "2 points", "3 points", "6 points"], correct: "1 goal", explanation: "Each legal goal adds 1 to that team’s score.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a standard outdoor soccer field?", options: ["A rectangular field with one goal at each end", "A diamond with four bases", "A court divided by a net", "An ice rink divided by blue lines"], correct: "A rectangular field with one goal at each end", explanation: "Outdoor soccer is played on a rectangular field, also called a pitch, with one goal at each end.", xp: 12 },
+    ],
   },
   {
     id: "volleyball",
@@ -165,7 +193,12 @@ export const SPORTS: Sport[] = [
       { name: "Libero", group: "Back Row", focus: "control serve receive and floor defense" },
       { name: "Defensive Specialist", group: "Back Row", focus: "serve, pass, and defend targeted rotations" },
     ],
-    sample: { teamSize: "6 players per indoor team", format: "Best of five sets", score: "Rally scoring to 25 in most sets", field: "A court divided by a net" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard indoor volleyball, how many players from each team are on the court?", youngPrompt: "How many players from one indoor volleyball team are on the court?", options: ["6 per team (12 players total)", "6 players total", "2 per team", "11 per team"], correct: "6 per team (12 players total)", explanation: "Indoor volleyball uses 6 players per team on the court; beach volleyball uses 2 players per team.", youngExplanation: "Indoor volleyball uses 6 players on each team.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is a standard indoor volleyball match normally decided?", options: ["Best of five sets; the first team to win three sets wins", "Two 45-minute halves", "Four quarters", "Nine innings"], correct: "Best of five sets; the first team to win three sets wins", explanation: "Indoor volleyball is normally best of five sets, while beach volleyball is normally best of three.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "In standard indoor volleyball, what is the usual target score for a non-deciding set?", options: ["25 points, with a two-point winning margin", "15 points with no winning margin", "21 points exactly", "6 points"], correct: "25 points, with a two-point winning margin", explanation: "Most indoor sets are played to 25 and must be won by 2; a deciding fifth set is played to 15.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a volleyball court?", options: ["A court divided into two sides by a net", "A diamond with four bases", "A pool with floating goals", "A field with two end zones"], correct: "A court divided into two sides by a net", explanation: "Volleyball is played on a court divided into two equal sides by a net.", xp: 12 },
+    ],
   },
   {
     id: "baseball",
@@ -183,7 +216,12 @@ export const SPORTS: Sport[] = [
       { name: "Third Base", group: "Infield", focus: "react quickly and guard the line" },
       { name: "Outfielder", group: "Outfield", focus: "read contact and control extra bases" },
     ],
-    sample: { teamSize: "9 defensive players", format: "Nine innings", score: "A completed trip around the bases scores 1 run", field: "A diamond with four bases and an outfield" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard baseball, how many defensive players does one team put on the field while the other team bats?", youngPrompt: "How many defenders does a baseball team use on the field?", options: ["9 defensive players", "9 players total between both teams", "11 defensive players", "6 defensive players"], correct: "9 defensive players", explanation: "A standard baseball defense has 9 players on the field.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How many innings are in a standard regulation adult baseball game?", options: ["9 innings", "7 innings", "4 quarters", "2 halves"], correct: "9 innings", explanation: "A standard adult regulation baseball game has 9 innings, although some youth and shortened competitions use fewer.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What must a runner do to score one run in baseball?", options: ["Touch first, second, third, and home plate legally", "Reach first base only", "Hit the ball over the fence every time", "Record three outs"], correct: "Touch first, second, third, and home plate legally", explanation: "A runner scores 1 run by legally advancing around all four bases and touching home plate.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a baseball field?", options: ["A diamond with four bases connected to an outfield", "A court divided by a net", "A pool with floating goals", "A rectangular pitch with in-goal areas"], correct: "A diamond with four bases connected to an outfield", explanation: "Baseball uses a four-base diamond surrounded by fair-territory outfield space.", xp: 12 },
+    ],
   },
   {
     id: "softball",
@@ -199,7 +237,12 @@ export const SPORTS: Sport[] = [
       { name: "Middle Infielder", group: "Infield", focus: "cover range and manage force plays" },
       { name: "Outfielder", group: "Outfield", focus: "read contact and control extra bases" },
     ],
-    sample: { teamSize: "9 defensive players in fastpitch", format: "Seven innings", score: "A completed trip around the bases scores 1 run", field: "A compact diamond with a pitching circle" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard fastpitch softball, how many defensive players are on the field?", youngPrompt: "How many defenders does a fastpitch softball team use?", options: ["9 defensive players", "9 players total between both teams", "10 defensive players in every softball format", "6 defensive players"], correct: "9 defensive players", explanation: "Standard fastpitch softball uses 9 defensive players; some slowpitch rulesets use 10.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How many innings are in a standard regulation fastpitch softball game?", options: ["7 innings", "9 innings", "4 quarters", "2 halves"], correct: "7 innings", explanation: "A standard regulation fastpitch softball game has 7 innings.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What must a runner do to score one run in softball?", options: ["Touch first, second, third, and home plate legally", "Reach first base only", "Record three outs", "Touch the pitching plate"], correct: "Touch first, second, third, and home plate legally", explanation: "A runner scores 1 run by legally advancing around all four bases and touching home plate.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which feature helps distinguish a softball field?", options: ["A four-base diamond with a pitching circle", "A court divided by a net", "An ice rink with blue lines", "A pool with floating goals"], correct: "A four-base diamond with a pitching circle", explanation: "Softball uses a four-base diamond and a pitching circle rather than a raised pitching mound.", xp: 12 },
+    ],
   },
   {
     id: "hockey",
@@ -214,7 +257,12 @@ export const SPORTS: Sport[] = [
       { name: "Defenseman", group: "Defense", focus: "protect the middle and start the breakout" },
       { name: "Goaltender", group: "Goal", focus: "track the puck and control rebounds" },
     ],
-    sample: { teamSize: "6 players including the goalie", format: "Three 20-minute periods", score: "A goal is worth 1", field: "An ice rink divided into three zones" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "At full strength in standard ice hockey, how many players from each team are normally on the ice, including the goalkeeper?", youngPrompt: "At full strength, how many players from one hockey team are on the ice, including the goalie?", options: ["6 per team (12 players total)", "6 players total", "5 per team including the goalie", "11 per team"], correct: "6 per team (12 players total)", explanation: "A full-strength team normally has 5 skaters and 1 goalkeeper on the ice, making 6 players per team.", youngExplanation: "Each team normally has 5 skaters and 1 goalie on the ice.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is regulation time divided in standard international ice hockey?", options: ["Three 20-minute periods", "Two 45-minute halves", "Four 15-minute quarters", "Nine innings"], correct: "Three 20-minute periods", explanation: "Regulation ice hockey uses three 20-minute periods, with overtime rules applied when required.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "How much does one legal hockey goal add to the score?", options: ["1 goal", "2 points", "3 points", "6 points"], correct: "1 goal", explanation: "Each legal goal adds 1 to the scoring team’s total.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches an ice hockey rink?", options: ["An ice surface divided into defensive, neutral, and attacking zones", "A diamond with four bases", "A turf pitch with shooting circles", "A court divided by a net"], correct: "An ice surface divided into defensive, neutral, and attacking zones", explanation: "Blue lines divide an ice hockey rink into defensive, neutral, and attacking zones.", xp: 12 },
+    ],
   },
   {
     id: "lacrosse",
@@ -230,7 +278,12 @@ export const SPORTS: Sport[] = [
       { name: "Goalie", group: "Goal", focus: "save shots and direct the clearing game" },
       { name: "Faceoff Specialist", group: "Specialist", focus: "win possession at the whistle" },
     ],
-    sample: { teamSize: "10 players in men’s field lacrosse", format: "Four quarters", score: "A goal is worth 1", field: "A large field with a goal in each offensive end" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In men’s field lacrosse, how many players from each team are normally on the field, including the goalkeeper?", youngPrompt: "In men’s field lacrosse, how many players are on one team, including the goalie?", options: ["10 players per team", "10 players total between both teams", "6 players per team", "15 players per team"], correct: "10 players per team", explanation: "Men’s field lacrosse uses 10 players per team; women’s field, box, and Sixes lacrosse use different team sizes.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is a standard men’s field lacrosse game normally divided?", options: ["Four quarters", "Two 45-minute halves", "Three periods", "Nine innings"], correct: "Four quarters", explanation: "Men’s field lacrosse is played in four quarters; exact quarter length depends on the competition level.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "How much does one legal field lacrosse goal add to the score?", options: ["1 goal", "2 points", "3 points", "6 points"], correct: "1 goal", explanation: "Each legal goal adds 1 to the scoring team’s total.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a field lacrosse playing area?", options: ["A large field with one goal in each offensive end", "A diamond with four bases", "A pool with floating goals", "A court divided by a net"], correct: "A large field with one goal in each offensive end", explanation: "Field lacrosse uses a large rectangular field with a goal positioned in each offensive end.", xp: 12 },
+    ],
   },
   {
     id: "rugby",
@@ -250,7 +303,12 @@ export const SPORTS: Sport[] = [
       { name: "Wing", group: "Backs", focus: "finish space and defend the edge" },
       { name: "Fullback", group: "Backs", focus: "cover kicks and counterattack" },
     ],
-    sample: { teamSize: "15 players in rugby union", format: "Two 40-minute halves", score: "A try is worth 5 points in union", field: "A rectangular pitch with in-goal areas" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In rugby union, how many players from each team are normally on the field?", youngPrompt: "How many players are on one rugby union team during play?", options: ["15 players per team", "15 players total between both teams", "13 players per team", "7 players per team"], correct: "15 players per team", explanation: "Rugby union uses 15 players per team; rugby league uses 13 and rugby sevens uses 7.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is a standard adult rugby union match normally divided?", options: ["Two 40-minute halves", "Four 15-minute quarters", "Three 20-minute periods", "Nine innings"], correct: "Two 40-minute halves", explanation: "A standard adult rugby union match has two 40-minute halves.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "How many points is a try worth in rugby union?", options: ["5 points", "4 points", "3 points", "6 points"], correct: "5 points", explanation: "A try is worth 5 points in rugby union; rugby league uses a different value.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a rugby union pitch?", options: ["A rectangular pitch with an in-goal area beyond each goal line", "A diamond with four bases", "A court with two baskets", "An ice rink divided by blue lines"], correct: "A rectangular pitch with an in-goal area beyond each goal line", explanation: "A rugby union pitch is rectangular and includes an in-goal area beyond each goal line.", xp: 12 },
+    ],
   },
   {
     id: "field-hockey",
@@ -265,7 +323,12 @@ export const SPORTS: Sport[] = [
       { name: "Defender", group: "Defense", focus: "protect the circle and start possession" },
       { name: "Goalkeeper", group: "Goal", focus: "protect the goal and organize defenders" },
     ],
-    sample: { teamSize: "11 players per team", format: "Four 15-minute quarters", score: "A goal is worth 1", field: "A turf pitch with shooting circles" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard outdoor field hockey, how many players from each team are normally on the field, including the goalkeeper?", youngPrompt: "How many players from one outdoor field hockey team are on the field, including the goalie?", options: ["11 players per team (22 players total)", "11 players total between both teams", "6 players per team", "15 players per team"], correct: "11 players per team (22 players total)", explanation: "Outdoor field hockey uses 11 players per team, including the goalkeeper, so two full teams total 22 players.", youngExplanation: "Each team uses 11 players, making 22 players total.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is a standard international outdoor field hockey match divided?", options: ["Four 15-minute quarters", "Two 45-minute halves", "Three 20-minute periods", "Nine innings"], correct: "Four 15-minute quarters", explanation: "International outdoor field hockey uses four 15-minute quarters.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "How much does one legal field hockey goal add to the score?", options: ["1 goal", "2 points", "3 points", "6 points"], correct: "1 goal", explanation: "Each legal goal adds 1 to the scoring team’s total.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which feature belongs to an outdoor field hockey pitch?", options: ["A shooting circle in front of each goal", "A diamond with four bases", "End zones behind uprights", "Blue lines dividing an ice surface"], correct: "A shooting circle in front of each goal", explanation: "An outdoor field hockey pitch has a shooting circle in front of each goal; attacking shots must meet the circle rules to count.", xp: 12 },
+    ],
   },
   {
     id: "water-polo",
@@ -281,7 +344,12 @@ export const SPORTS: Sport[] = [
       { name: "Center Defender", group: "Defense", focus: "deny inside position without fouling" },
       { name: "Goalkeeper", group: "Goal", focus: "protect angles and direct the defense" },
     ],
-    sample: { teamSize: "7 players including the goalkeeper", format: "Four quarters", score: "A goal is worth 1", field: "A marked pool with floating goals" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "At the start of a standard water polo match, how many players from each team are in the water, including the goalkeeper?", youngPrompt: "At the start of water polo, how many players from one team are in the pool, including the goalie?", options: ["7 players per team (14 players total)", "7 players total between both teams", "6 players per team", "11 players per team"], correct: "7 players per team (14 players total)", explanation: "Each team starts with 7 players in the water, one of whom is the goalkeeper; current rules can allow seven field players after the match begins.", youngExplanation: "Each team starts with 7 players in the pool.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How is a standard water polo match divided?", options: ["Four quarters", "Two 45-minute halves", "Three periods", "Nine innings"], correct: "Four quarters", explanation: "Water polo uses four quarters, while exact quarter length can depend on the ruleset and competition level.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "How much does one legal water polo goal add to the score?", options: ["1 goal", "2 points", "3 points", "6 points"], correct: "1 goal", explanation: "Each legal goal adds 1 to the scoring team’s total.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a water polo playing area?", options: ["A marked pool with one goal at each end", "A diamond with four bases", "A turf pitch with shooting circles", "An ice rink divided by blue lines"], correct: "A marked pool with one goal at each end", explanation: "Water polo is played in a marked pool with a goal at each end.", xp: 12 },
+    ],
   },
   {
     id: "cricket",
@@ -298,7 +366,12 @@ export const SPORTS: Sport[] = [
       { name: "Fielder", group: "Fielding", focus: "protect scoring areas and convert chances" },
       { name: "Captain", group: "Leadership", focus: "set fields and manage bowlers strategically" },
     ],
-    sample: { teamSize: "11 players per side", format: "Format determines overs and duration", score: "Batters score runs between wickets or at the boundary", field: "An oval field centered on a 22-yard pitch" },
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "How many players are named in each playing side for a standard cricket match?", youngPrompt: "How many players are on one cricket side?", options: ["11 players per side", "11 players total between both sides", "9 players per side", "15 players per side"], correct: "11 players per side", explanation: "A cricket match is played between two sides of 11 players each.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "Which statement correctly distinguishes the major cricket formats?", options: ["Tests can last up to five days; ODIs use 50 overs per side; T20s use 20 overs per side", "Every format lasts exactly 90 minutes", "Every format uses four quarters", "Tests, ODIs, and T20s all use exactly 20 overs"], correct: "Tests can last up to five days; ODIs use 50 overs per side; T20s use 20 overs per side", explanation: "Cricket’s structure depends on its format: Tests, One Day Internationals, and T20 matches use different innings and over limits.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What is the standard boundary scoring in cricket?", options: ["4 runs if the ball reaches the boundary after touching the ground; 6 if it clears on the full", "Every boundary scores 1 run", "Every boundary scores 3 points", "Only running between wickets can score"], correct: "4 runs if the ball reaches the boundary after touching the ground; 6 if it clears on the full", explanation: "A grounded boundary scores 4 runs, while a ball clearing the boundary without touching the ground scores 6.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a cricket ground?", options: ["An oval field centered on a 22-yard pitch", "A diamond with four bases", "A court divided by a net", "A pool with floating goals"], correct: "An oval field centered on a 22-yard pitch", explanation: "Cricket is played on an oval field with a 22-yard pitch at its center.", xp: 12 },
+    ],
   },
 ];
 
@@ -757,7 +830,6 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
 }
 
 export function buildSportIntroModule(sport: Sport): LearningModule {
-  const otherSports = SPORTS.filter((item) => item.id !== sport.id).slice(0, 3);
   return {
     id: `${sport.id}-fundamentals-intro`,
     sportId: sport.id,
@@ -766,52 +838,11 @@ export function buildSportIntroModule(sport: Sport): LearningModule {
     title: `${sport.name} in Motion`,
     description: "A representative interactive fundamentals module for this sport’s growing curriculum.",
     estimatedMinutes: 3,
-    challenges: [
-      {
-        id: `${sport.id}-team-size`,
-        conceptId: `${sport.id}-team-size`,
-        type: "choice",
-        label: "Know the team",
-        prompt: `Which statement correctly describes a standard ${sport.name} team in play?`,
-        options: [sport.sample.teamSize, ...otherSports.map((item) => item.sample.teamSize)],
-        correct: sport.sample.teamSize,
-        explanation: `${sport.name}: ${sport.sample.teamSize}.`,
-        xp: 10,
-      },
-      {
-        id: `${sport.id}-format`,
-        conceptId: `${sport.id}-game-format`,
-        type: "choice",
-        label: "Game structure",
-        prompt: `How is ${sport.name} normally structured?`,
-        options: [sport.sample.format, ...otherSports.map((item) => item.sample.format)],
-        correct: sport.sample.format,
-        explanation: `${sport.name} uses this basic format: ${sport.sample.format}.`,
-        xp: 10,
-      },
-      {
-        id: `${sport.id}-score`,
-        conceptId: `${sport.id}-scoring`,
-        type: "choice",
-        label: "Scoring basics",
-        prompt: `Which scoring statement belongs to ${sport.name}?`,
-        options: [sport.sample.score, ...otherSports.map((item) => item.sample.score)],
-        correct: sport.sample.score,
-        explanation: sport.sample.score,
-        xp: 10,
-      },
-      {
-        id: `${sport.id}-field`,
-        conceptId: `${sport.id}-playing-area`,
-        type: "hotspot",
-        label: "Know the arena",
-        prompt: `Which playing-area description fits ${sport.name}?`,
-        options: [sport.sample.field, ...otherSports.map((item) => item.sample.field)],
-        correct: sport.sample.field,
-        explanation: `${sport.name} is played on ${sport.sample.field.toLowerCase()}.`,
-        xp: 12,
-      },
-    ],
+    challenges: sport.introQuestions.map((question) => ({
+      ...question,
+      id: `${sport.id}-${question.id}`,
+      conceptId: `${sport.id}-${question.id === "format" ? "game-format" : question.id === "score" ? "scoring" : question.id === "field" ? "playing-area" : "team-size"}`,
+    })),
   };
 }
 

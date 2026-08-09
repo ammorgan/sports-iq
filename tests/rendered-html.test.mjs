@@ -68,6 +68,20 @@ test("football contains every major position group from the product brief", asyn
   ]) assert.match(source, new RegExp(`name: "${position}"`));
 });
 
+test("intro quizzes use explicit, unambiguous rules contexts", async () => {
+  const source = await readFile(new URL("../app/learning-data.ts", import.meta.url), "utf8");
+  assert.match(source, /introQuestions:/);
+  assert.match(source, /11 players from each team \(22 players total\)/);
+  assert.match(source, /including the goalkeeper/);
+  assert.match(source, /5-on-5 and 7-on-7 are common/);
+  assert.match(source, /standard indoor volleyball/);
+  assert.match(source, /standard fastpitch softball/);
+  assert.match(source, /men’s field lacrosse/);
+  assert.match(source, /rugby union/);
+  assert.doesNotMatch(source, /const otherSports/);
+  assert.doesNotMatch(source, /Which statement correctly describes a standard/);
+});
+
 test("age paths meaningfully adapt the learning experience", async () => {
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   for (const age of ["7-9", "10-12", "13-15", "16-17", "18+"]) {
@@ -95,4 +109,35 @@ test("age paths meaningfully adapt the learning experience", async () => {
   assert.doesNotMatch(source, /window\.alert\(currentChallenge\.hint/);
   assert.match(source, /challenge\.youngPrompt/);
   assert.match(source, /challenge\.youngExplanation/);
+});
+
+test("players can choose from fifteen animated mini characters and understand sound controls", async () => {
+  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.equal([...source.matchAll(/src: "\/avatars\/avatar-\d{2}\.png"/g)].length, 15);
+  assert.match(source, /Choose your mini character/);
+  assert.match(source, /SFX/);
+  assert.match(source, /answer feedback sounds/);
+  assert.doesNotMatch(source, />[♪♩]</);
+  assert.match(styles, /@keyframes avatar-idle/);
+  assert.match(styles, /prefers-reduced-motion: reduce/);
+});
+
+test("mobile app shares learning data and adapts across iOS, Android, phones, and tablets", async () => {
+  const source = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  const config = await readFile(new URL("../mobile/app.json", import.meta.url), "utf8");
+  const packageSource = await readFile(new URL("../mobile/package.json", import.meta.url), "utf8");
+
+  assert.match(source, /from "\.\.\/app\/learning-data"/);
+  assert.equal([...source.matchAll(/require\("\.\/assets\/avatars\/avatar-\d{2}\.png"\)/g)].length, 15);
+  assert.match(source, /useWindowDimensions/);
+  assert.match(source, /width >= 720/);
+  assert.match(source, /seconds: null/);
+  for (const seconds of [60, 45, 35, 30]) assert.match(source, new RegExp(`seconds: ${seconds}`));
+  assert.match(source, /useAudioPlayer/);
+  assert.match(source, /AsyncStorage/);
+  assert.match(config, /"supportsTablet": true/);
+  assert.match(config, /"package": "com\.ammorgan\.sportsiq"/);
+  assert.match(packageSource, /"expo": "~57\.0\.8"/);
 });
