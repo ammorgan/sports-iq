@@ -291,9 +291,11 @@ export default function Home() {
             football.variant = "Women’s Tackle (WNFC)";
           }
           const avatarMark = AVATARS.some((avatar) => avatar.id === parsed.avatarMark) ? parsed.avatarMark : DEFAULT_PLAYER.avatarMark;
-          setAgeChoice(parsed.ageBand ?? "10-12");
+          const savedAgeBand = parsed.ageBand ?? "10-12";
+          const isChildProfile = parsed.accountKind === "child" || savedAgeBand === "7-9" || savedAgeBand === "10-12";
+          setAgeChoice(savedAgeBand);
           setAvatarChoice(avatarMark);
-          setPlayer({ ...DEFAULT_PLAYER, ...parsed, avatarMark });
+          setPlayer({ ...DEFAULT_PLAYER, ...parsed, profileName: isChildProfile ? "Player" : parsed.profileName, avatarMark });
         } catch { /* use a fresh profile */ }
       }
       setHydrated(true);
@@ -337,15 +339,19 @@ export default function Home() {
 
   const chooseSport = (sport: Sport) => {
     setSelectedSportId(sport.id);
-    setVariantChoice(sport.variants[0]);
     setSelectedPosition(null);
     setPathway("general");
-    if (!player.sports[sport.id]?.experience) {
-      setExperienceChoice("new");
-      setScreen("experience");
-    } else {
-      setScreen("sport");
-    }
+    setPlayer((current) => {
+      if (current.sports[sport.id]?.experience) return current;
+      const nextSports = {
+        ...current.sports,
+        [sport.id]: { ...emptySportProgress(), experience: "new" as ExperienceLevel },
+      };
+      const badges = new Set(current.badges);
+      if (Object.keys(nextSports).length >= 3) badges.add("multi-sport");
+      return { ...current, sports: nextSports, badges: [...badges] };
+    });
+    setScreen("sport");
   };
 
   const saveExperience = () => {
@@ -559,9 +565,9 @@ export default function Home() {
   };
 
   const currentSportModules = moduleList(selectedSport);
-  const footballFundamentalsDone = FOOTBALL_MODULES.filter((module) => module.level === 0)
-    .every((module) => sportProgress.completedModules.includes(module.id));
-  const positionsUnlocked = sportProgress.experience !== "new" || footballFundamentalsDone || selectedSport.id !== "football" && sportProgress.completedModules.length > 0;
+  // Match the native app: curious players can enter a position room immediately,
+  // while the general path remains the recommended first mission.
+  const positionsUnlocked = true;
 
   const nextModule = sportProgress.experience === "new"
     ? currentSportModules.find((learningModule) => !sportProgress.completedModules.includes(learningModule.id))
@@ -775,11 +781,11 @@ export default function Home() {
     const progressPercent = Math.min(100, Math.round((sportProgress.completedModules.length / totalModules) * 100));
 
     return (
-      <main className={`sport-shell ${player.darkMode ? "dark" : ""}`}>
+      <main className={`sport-shell ${player.darkMode ? "dark" : ""}`} style={{ "--sport-color": selectedSport.color, "--sport-soft": selectedSport.softColor } as React.CSSProperties}>
         <AppHeader player={player} active="learn" onNavigate={(tab) => { setDashboardTab(tab); setScreen("dashboard"); }} onHome={navigateHome} onToggleTheme={() => setPlayer((current) => ({ ...current, darkMode: !current.darkMode }))} onToggleSound={() => setPlayer((current) => ({ ...current, soundOn: !current.soundOn }))} />
         <section className="sport-hero" style={{ "--sport-color": selectedSport.color, "--sport-soft": selectedSport.softColor } as React.CSSProperties}>
           <button className="back-link" onClick={navigateHome}>← All sports</button>
-          <div className="sport-title-row"><div className="sport-mark sport-mark--xl">{selectedSport.mark}</div><div><span>{sportProgress.variant ?? selectedSport.variants[0]} PATH</span><h1>{selectedSport.name}</h1><p>{selectedSport.pathNote ?? (sportProgress.experience === "new" ? "Start with the fundamentals, then unlock position-specific reads." : "Your placement opens Rookie and position-specific learning.")}</p></div></div>
+          <div className="sport-title-row"><div className="sport-mark sport-mark--xl">{selectedSport.mark}</div><div><span>YOUR SPORT ARENA</span><h1>{selectedSport.name}</h1><p>{selectedSport.pathNote ?? "Learn the rules, positions, and game decisions that matter."}</p></div></div>
           <SportMotionPreview sport={selectedSport} />
           <div className="sport-summary"><div><strong>{progressPercent}%</strong><span>SPORT PROGRESS</span></div><div><strong>{sportProgress.xp}</strong><span>XP EARNED</span></div><div><strong>{LEVELS[Math.min(5, Math.floor(sportProgress.completedModules.length / 3))]}</strong><span>CURRENT LEVEL</span></div></div>
         </section>
@@ -834,7 +840,7 @@ export default function Home() {
 }
 
 function AppHeader({ player, active, onNavigate, onHome, onToggleTheme, onToggleSound }: { player: Player; active: DashboardTab; onNavigate: (tab: DashboardTab) => void; onHome: () => void; onToggleTheme: () => void; onToggleSound: () => void }) {
-  return <header className="app-header"><button className="brand-button" onClick={onHome}><Logo compact /></button><nav aria-label="Main navigation"><button className={active === "learn" ? "active" : ""} onClick={() => onNavigate("learn")}>Learn</button><button className={active === "progress" ? "active" : ""} onClick={() => onNavigate("progress")}>Progress</button><button className={active === "league" ? "active" : ""} onClick={() => onNavigate("league")}>League</button><button className={active === "badges" ? "active" : ""} onClick={() => onNavigate("badges")}>Badges</button></nav><div className="header-stats"><button className="streak-pill" onClick={() => onNavigate("progress")}><span>◆</span><strong>{player.streak}</strong><small>DAY STREAK</small></button><button className="xp-pill" onClick={() => onNavigate("league")}><span>XP</span><strong>{player.totalXp.toLocaleString()}</strong></button><button className={`sound-button ${player.soundOn ? "active" : ""}`} onClick={onToggleSound} aria-label={`${player.soundOn ? "Turn off" : "Turn on"} answer feedback sounds`} title="Controls short correct and incorrect answer sounds"><span>SFX</span><strong>{player.soundOn ? "ON" : "OFF"}</strong></button><button className="theme-button" onClick={onToggleTheme} aria-label="Toggle dark mode">{player.darkMode ? "☀" : "◐"}</button><button className="avatar-button" style={{ "--player-color": player.accentColor } as React.CSSProperties} onClick={() => onNavigate("profile")} aria-label={`Open ${player.profileName}'s profile`}><AvatarImage id={player.avatarMark} /></button></div></header>;
+  return <header className="app-header"><button className="brand-button" onClick={onHome}><Logo compact /></button><nav aria-label="Main navigation"><button className={active === "learn" ? "active" : ""} onClick={() => onNavigate("learn")}><span aria-hidden="true">⌂</span><small>Learn</small></button><button className={active === "progress" ? "active" : ""} onClick={() => onNavigate("progress")}><span aria-hidden="true">↗</span><small>Progress</small></button><button className={active === "league" ? "active" : ""} onClick={() => onNavigate("league")}><span aria-hidden="true">♛</span><small>League</small></button><button className={active === "badges" ? "active" : ""} onClick={() => onNavigate("badges")}><span aria-hidden="true">★</span><small>Badges</small></button></nav><div className="header-stats"><button className="streak-pill" onClick={() => onNavigate("progress")}><span>◆</span><strong>{player.streak}</strong><small>DAY STREAK</small></button><button className="xp-pill" onClick={() => onNavigate("league")} aria-label={`Open XP league, ${player.totalXp.toLocaleString()} XP`}><span>XP</span><strong>{player.totalXp.toLocaleString()}</strong></button><button className={`sound-button ${player.soundOn ? "active" : ""}`} onClick={onToggleSound} aria-label={`${player.soundOn ? "Turn off" : "Turn on"} answer feedback sounds`} title="Controls short correct and incorrect answer sounds"><span>SFX</span><strong>{player.soundOn ? "ON" : "OFF"}</strong></button><button className="theme-button" onClick={onToggleTheme} aria-label="Toggle dark mode">{player.darkMode ? "☀" : "◐"}</button><button className="avatar-button" style={{ "--player-color": player.accentColor } as React.CSSProperties} onClick={() => onNavigate("profile")} aria-label={`Open ${player.profileName}'s profile`}><AvatarImage id={player.avatarMark} /></button></div></header>;
 }
 
 function DashboardLearn({ player, onChooseSport, onContinue }: { player: Player; onChooseSport: (sport: Sport) => void; onContinue: () => void }) {
@@ -844,7 +850,11 @@ function DashboardLearn({ player, onChooseSport, onContinue }: { player: Player;
   const spotlightSport = SPORTS[new Date().getDate() % SPORTS.length];
   const agePath = AGE_BANDS.find((band) => band.value === player.ageBand) ?? AGE_BANDS[1];
   return <>
-    <section className="dashboard-hero"><div><span className="eyebrow"><i /> {agePath.title.toUpperCase()} PATH · {agePath.label}</span><h1>GOOD TO SEE YOU,<br /><em>{player.profileName.toUpperCase()}.</em></h1><p>{continueSport ? "Your next sports mission is ready. Make the reads, earn the XP, and keep building real game IQ." : "Choose your first arena and start making game decisions in under a minute."}</p><div className="hero-chips"><span>QUICK SESSIONS</span><span>REAL GAME READS</span><span>13 SPORTS</span></div></div><aside className="daily-card"><div className="hero-player" style={{ "--player-color": player.accentColor } as React.CSSProperties}><AvatarImage id={player.avatarMark} /><span>GAME READY</span></div><div><span>TODAY’S MISSION</span><strong>{Math.min(player.dailyXp, DAILY_GOAL)} <small>/ {DAILY_GOAL} XP</small></strong><i><b style={{ width: `${dailyPercent}%` }} /></i><p>{dailyPercent >= 100 ? "Mission complete. You showed up and leveled up." : `${DAILY_GOAL - Math.min(player.dailyXp, DAILY_GOAL)} XP to keep your streak moving.`}</p></div><div className="daily-ring" style={{ "--daily-progress": `${dailyPercent}%` } as React.CSSProperties}>{Math.round(dailyPercent)}%</div></aside></section>
+    <section className="mobile-game-guide" aria-label="Choose a sport">
+      <div><span>HI, {player.profileName.toUpperCase()} · AGES {player.ageBand}</span><h1>PICK A SPORT</h1><p><b>1</b> TAP TO START</p></div>
+      <div className="mobile-guide-player"><AvatarImage id={player.avatarMark} /></div>
+    </section>
+    <section className="dashboard-hero"><div><span className="eyebrow"><i /> {agePath.title.toUpperCase()} PATH · {agePath.label}</span><h1>GOOD TO SEE YOU,<br /><em>{player.profileName.toUpperCase()}.</em></h1><p>{continueSport ? "Your next sports mission is ready. Make the reads, earn the XP, and keep building real game IQ." : "Choose your first arena and start making game decisions in under a minute."}</p><div className="hero-chips"><span>QUICK SESSIONS</span><span>REAL GAME READS</span><span>{SPORTS.length} SPORTS</span></div></div><aside className="daily-card"><div className="hero-player" style={{ "--player-color": player.accentColor } as React.CSSProperties}><AvatarImage id={player.avatarMark} /><span>GAME READY</span></div><div><span>TODAY’S MISSION</span><strong>{Math.min(player.dailyXp, DAILY_GOAL)} <small>/ {DAILY_GOAL} XP</small></strong><i><b style={{ width: `${dailyPercent}%` }} /></i><p>{dailyPercent >= 100 ? "Mission complete. You showed up and leveled up." : `${DAILY_GOAL - Math.min(player.dailyXp, DAILY_GOAL)} XP to keep your streak moving.`}</p></div><div className="daily-ring" style={{ "--daily-progress": `${dailyPercent}%` } as React.CSSProperties}>{Math.round(dailyPercent)}%</div></aside></section>
     <SportTicker />
     <section className="daily-spotlight" style={{ "--sport-color": spotlightSport.color, "--sport-soft": spotlightSport.softColor } as React.CSSProperties}><div className="spotlight-orbit" aria-hidden="true"><i /><i /><i /></div><div className="sport-mark">{spotlightSport.mark}</div><div><span>DAILY SPORT SPOTLIGHT</span><h2>Can you make the call in {spotlightSport.name}?</h2><p>A quick mission built for your {agePath.title} path.</p></div><button className="primary-button primary-button--small" onClick={() => onChooseSport(spotlightSport)}>Enter mission <span>→</span></button></section>
     {continueSport && <section className="continue-card" style={{ "--sport-color": continueSport.color, "--sport-soft": continueSport.softColor } as React.CSSProperties}><div className="sport-mark">{continueSport.mark}</div><div><span>CONTINUE LEARNING</span><h2>{continueSport.name}</h2><p>{player.sports[continueSport.id].completedModules.length ? "Your next lesson is ready." : "Your personalized path is ready to begin."}</p></div><div className="continue-progress"><strong>{player.sports[continueSport.id].xp} XP</strong><i><b style={{ width: `${Math.min(100, player.sports[continueSport.id].completedModules.length * 18)}%` }} /></i></div><button className="primary-button primary-button--small" onClick={onContinue}>Continue <span>→</span></button></section>}
@@ -898,9 +908,10 @@ function BadgesDashboard({ player }: { player: Player }) {
 }
 
 function ProfileDashboard({ player, onUpdateIdentity, onReset }: { player: Player; onUpdateIdentity: (updates: Pick<Player, "profileName" | "avatarMark" | "accentColor">) => void; onReset: () => void }) {
-  const [name, setName] = useState(player.profileName);
+  const isChild = player.accountKind === "child" || player.ageBand === "7-9" || player.ageBand === "10-12";
+  const [name, setName] = useState(isChild ? "Player" : player.profileName);
   const [avatarMark, setAvatarMark] = useState(player.avatarMark);
   const [accentColor, setAccentColor] = useState(player.accentColor);
   const rank = playerRank(player.totalXp);
-  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Make the playbook yours. Your age path changes pacing and presentation—not what sports you can explore.</p></div><div className="profile-layout"><div className="profile-card" style={{ "--player-color": accentColor } as React.CSSProperties}><span className="player-card-rank">{rank.name}</span><div className="profile-avatar"><AvatarImage id={avatarMark} /></div><h2>{name || player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p><div className="player-card-stripe"><span>{player.ageBand}</span><span>{rank.mark}</span><span>SPORTS IQ</span></div></div><form onSubmit={(event) => { event.preventDefault(); if (name.trim()) onUpdateIdentity({ profileName: name.trim(), avatarMark, accentColor }); }}><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /><span>AGE PATH</span><div className="profile-age-locked"><strong>{player.ageBand}</strong><span>Set during age check · locked to protect the learning path</span></div><AvatarPicker value={avatarMark} onChange={setAvatarMark} /><span>TEAM COLOR</span><div className="color-options">{PLAYER_COLORS.map((color) => <button type="button" key={color} className={accentColor === color ? "active" : ""} style={{ background: color }} onClick={() => setAccentColor(color)} aria-label={`Choose team color ${color}`} aria-pressed={accentColor === color} />)}</div><button className="primary-button primary-button--small" type="submit">Save player card <span>→</span></button><hr /><span>ACCOUNT & PRIVACY</span><p>{player.accountKind === "child" ? "Child path · private device play. No child email or legal name is stored online." : player.accountKind === "guest" ? "Guest path · progress is currently saved on this device." : "Signed-in path · progress can sync across devices."}</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
+  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Make the playbook yours. Your age path changes pacing and presentation—not what sports you can explore.</p></div><div className="profile-layout"><div className="profile-card" style={{ "--player-color": accentColor } as React.CSSProperties}><span className="player-card-rank">{rank.name}</span><div className="profile-avatar"><AvatarImage id={avatarMark} /></div><h2>{isChild ? "Player" : name || player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p><div className="player-card-stripe"><span>{player.ageBand}</span><span>{rank.mark}</span><span>SPORTS IQ</span></div></div><form onSubmit={(event) => { event.preventDefault(); if (isChild || name.trim()) onUpdateIdentity({ profileName: isChild ? "Player" : name.trim(), avatarMark, accentColor }); }}>{!isChild && <><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /></>}<span>AGE PATH</span><div className="profile-age-locked"><strong>{player.ageBand}</strong><span>Set during age check · locked to protect the learning path</span></div><AvatarPicker value={avatarMark} onChange={setAvatarMark} /><span>TEAM COLOR</span><div className="color-options">{PLAYER_COLORS.map((color) => <button type="button" key={color} className={accentColor === color ? "active" : ""} style={{ background: color }} onClick={() => setAccentColor(color)} aria-label={`Choose team color ${color}`} aria-pressed={accentColor === color} />)}</div><button className="primary-button primary-button--small" type="submit">Save player card <span>→</span></button><hr /><span>ACCOUNT & PRIVACY</span><p>{isChild ? "Child path · private device play. No child email, legal name, or public leaderboard profile is stored online." : player.accountKind === "guest" ? "Guest path · progress is currently saved on this device." : "Signed-in path · progress can sync across devices."}</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
 }

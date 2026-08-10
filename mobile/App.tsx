@@ -266,10 +266,12 @@ function SportsIQApp() {
         try {
           const parsed = JSON.parse(saved) as Partial<Profile>;
           const avatarId = AVATARS.some((avatar) => avatar.id === parsed.avatarId) ? parsed.avatarId as string : DEFAULT_PROFILE.avatarId;
+          const savedAgeBand = parsed.ageBand ?? DEFAULT_PROFILE.ageBand;
+          const isChildProfile = parsed.accountKind === "child" || savedAgeBand === "7-9" || savedAgeBand === "10-12";
           const next: Profile = {
             ...DEFAULT_PROFILE,
-            name: parsed.name ?? DEFAULT_PROFILE.name,
-            ageBand: parsed.ageBand ?? DEFAULT_PROFILE.ageBand,
+            name: isChildProfile ? "Player" : parsed.name ?? DEFAULT_PROFILE.name,
+            ageBand: savedAgeBand,
             avatarId,
             soundOn: parsed.soundOn ?? DEFAULT_PROFILE.soundOn,
             xp: parsed.xp ?? DEFAULT_PROFILE.xp,
