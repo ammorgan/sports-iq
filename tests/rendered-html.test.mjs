@@ -84,6 +84,7 @@ test("intro quizzes use explicit, unambiguous rules contexts", async () => {
 
 test("age paths meaningfully adapt the learning experience", async () => {
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const learningData = await readFile(new URL("../app/learning-data.ts", import.meta.url), "utf8");
   for (const age of ["7-9", "10-12", "13-15", "16-17", "18+"]) {
     assert.match(source, new RegExp(`value: "${age.replace("+", "\\+")}"`));
   }
@@ -96,7 +97,7 @@ test("age paths meaningfully adapt the learning experience", async () => {
   assert.match(source, /value: "16-17"[\s\S]*?seconds: 35/);
   assert.match(source, /value: "18\+"[\s\S]*?seconds: 30/);
   assert.match(source, /challengeSeconds !== null/);
-  assert.match(source, /options\.length > 3/);
+  assert.match(learningData, /options\.length > 3/);
   assert.match(source, /challengeSeconds/);
   assert.match(source, /play-visual/);
   assert.match(source, /PLAYER_RANKS/);
@@ -117,7 +118,7 @@ test("players can choose from twenty-two interleaved diverse animated mini chara
 
   assert.equal([...source.matchAll(/src: "\/avatars\/avatar-\d{2}\.png"/g)].length, 22);
   assert.match(source, /avatar-16[\s\S]*avatar-05[\s\S]*avatar-20[\s\S]*avatar-01[\s\S]*avatar-18/);
-  assert.match(source, /Choose your mini character/);
+  assert.match(source, /CHOOSE YOUR AVATAR/);
   assert.match(source, /SFX/);
   assert.match(source, /answer feedback sounds/);
   assert.doesNotMatch(source, />[♪♩]</);
@@ -131,7 +132,7 @@ test("mobile app shares learning data and adapts across iOS, Android, phones, an
   const packageSource = await readFile(new URL("../mobile/package.json", import.meta.url), "utf8");
 
   assert.match(source, /from "\.\.\/app\/learning-data"/);
-  assert.equal([...source.matchAll(/require\("\.\/assets\/avatars\/avatar-\d{2}\.png"\)/g)].length, 22);
+  assert.equal([...source.matchAll(/require\("\.\/assets\/avatars-clean\/avatar-\d{2}\.png"\)/g)].length, 22);
   assert.match(source, /avatar-16[\s\S]*avatar-05[\s\S]*avatar-20[\s\S]*avatar-01[\s\S]*avatar-18/);
   assert.match(source, /useWindowDimensions/);
   assert.match(source, /width >= 720/);
@@ -141,5 +142,23 @@ test("mobile app shares learning data and adapts across iOS, Android, phones, an
   assert.match(source, /AsyncStorage/);
   assert.match(config, /"supportsTablet": true/);
   assert.match(config, /"package": "com\.ammorgan\.sportsiq"/);
-  assert.match(packageSource, /"expo": "~57\.0\.8"/);
+  assert.match(packageSource, /"expo": "~55\.0\.28"/);
+});
+
+test("privacy gate, consent model, bot protection, and leaderboard are youth-safe by default", async () => {
+  const gate = await readFile(new URL("../app/privacy-gate.tsx", import.meta.url), "utf8");
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  const leaderboard = await readFile(new URL("../app/api/leaderboard/route.ts", import.meta.url), "utf8");
+  const verifyHuman = await readFile(new URL("../app/api/privacy/verify-human/route.ts", import.meta.url), "utf8");
+
+  assert.match(gate, /save only the range—not a birthday/i);
+  assert.match(gate, /does not ask for the child’s email or name/i);
+  assert.match(gate, /Play privately on this device/);
+  assert.match(schema, /isChildAccount/);
+  assert.match(schema, /parentalConsents/);
+  assert.match(schema, /leaderboardOptIn/);
+  assert.match(leaderboard, /p\.is_child_account = 0/);
+  assert.match(leaderboard, /p\.leaderboard_opt_in = 1/);
+  assert.match(verifyHuman, /siteverify/);
+  assert.match(verifyHuman, /TURNSTILE_SECRET_KEY/);
 });

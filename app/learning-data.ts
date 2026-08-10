@@ -10,6 +10,7 @@ export type Challenge = {
   prompt: string;
   youngPrompt?: string;
   options: string[];
+  advancedOptions?: string[];
   correct: string | string[];
   explanation: string;
   youngExplanation?: string;
@@ -44,6 +45,7 @@ type IntroQuestion = {
   prompt: string;
   youngPrompt?: string;
   options: string[];
+  advancedOptions?: string[];
   correct: string;
   explanation: string;
   youngExplanation?: string;
@@ -53,14 +55,68 @@ type IntroQuestion = {
 export type Sport = {
   id: string;
   name: string;
+  icon: string;
   mark: string;
   color: string;
   softColor: string;
   variants: string[];
   pathNote?: string;
+  pathLabel?: string;
+  pathQuestion?: string;
   positions: Position[];
   introQuestions: IntroQuestion[];
 };
+
+export type QuizAgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
+
+function stableHash(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function rotate<T>(items: T[], offset: number) {
+  if (items.length < 2) return [...items];
+  const shift = ((offset % items.length) + items.length) % items.length;
+  return [...items.slice(shift), ...items.slice(0, shift)];
+}
+
+export function arrangeChallengeOptions(
+  challenge: Challenge,
+  ageBand: QuizAgeBand,
+  questionIndex = 0,
+  sequenceKey = challenge.id,
+) {
+  const expected = Array.isArray(challenge.correct) ? challenge.correct : [challenge.correct];
+  const advancedPath = ageBand === "13-15" || ageBand === "16-17" || ageBand === "18+";
+  const source = advancedPath && challenge.advancedOptions?.length ? challenge.advancedOptions : challenge.options;
+  let options = [...new Set([...source, ...expected])];
+  const salt = stableHash(`${sequenceKey}:${ageBand}`);
+
+  if (ageBand === "7-9" && !["multi", "ordering"].includes(challenge.type) && options.length > 3) {
+    const distractors = rotate(options.filter((option) => !expected.includes(option)), salt);
+    options = [...expected, ...distractors.slice(0, Math.max(0, 3 - expected.length))];
+  }
+
+  if (challenge.type === "ordering") {
+    const shift = options.length > 1 ? 1 + ((salt + questionIndex) % (options.length - 1)) : 0;
+    const arranged = rotate(options, shift);
+    return arranged.every((option, index) => option === expected[index]) ? rotate(arranged, 1) : arranged;
+  }
+
+  if (challenge.type === "multi") {
+    return rotate(options, (salt + questionIndex) % Math.max(1, options.length));
+  }
+
+  const correct = expected[0];
+  const distractors = rotate(options.filter((option) => option !== correct), salt);
+  const targetIndex = (salt + questionIndex) % options.length;
+  distractors.splice(targetIndex, 0, correct);
+  return distractors;
+}
 
 export const EXPERIENCE_OPTIONS: Array<{ value: ExperienceLevel; title: string; note: string }> = [
   { value: "new", title: "I’m completely new", note: "Start with an interactive Fundamentals path." },
@@ -76,6 +132,7 @@ export const SPORTS: Sport[] = [
   {
     id: "football",
     name: "Tackle Football",
+    icon: "football",
     mark: "TF",
     color: "#2f6f68",
     softColor: "#dcebe6",
@@ -113,6 +170,7 @@ export const SPORTS: Sport[] = [
   {
     id: "flag-football",
     name: "Flag Football",
+    icon: "flag-checkered",
     mark: "FF",
     color: "#59739a",
     softColor: "#e0e6ef",
@@ -137,6 +195,7 @@ export const SPORTS: Sport[] = [
   {
     id: "basketball",
     name: "Basketball",
+    icon: "basketball",
     mark: "BK",
     color: "#b66a45",
     softColor: "#f1e3d8",
@@ -158,6 +217,7 @@ export const SPORTS: Sport[] = [
   {
     id: "soccer",
     name: "Soccer",
+    icon: "soccer",
     mark: "SC",
     color: "#4b7a58",
     softColor: "#e1eadf",
@@ -181,6 +241,7 @@ export const SPORTS: Sport[] = [
   {
     id: "volleyball",
     name: "Volleyball",
+    icon: "volleyball",
     mark: "VB",
     color: "#6b64a2",
     softColor: "#e8e5f3",
@@ -203,6 +264,7 @@ export const SPORTS: Sport[] = [
   {
     id: "baseball",
     name: "Baseball",
+    icon: "baseball",
     mark: "BB",
     color: "#386a8b",
     softColor: "#dce8ef",
@@ -226,6 +288,7 @@ export const SPORTS: Sport[] = [
   {
     id: "softball",
     name: "Softball",
+    icon: "baseball-diamond",
     mark: "SB",
     color: "#9a6c36",
     softColor: "#efe5d4",
@@ -247,6 +310,7 @@ export const SPORTS: Sport[] = [
   {
     id: "hockey",
     name: "Ice Hockey",
+    icon: "hockey-puck",
     mark: "HK",
     color: "#4b6f83",
     softColor: "#dfe9ed",
@@ -267,6 +331,7 @@ export const SPORTS: Sport[] = [
   {
     id: "lacrosse",
     name: "Lacrosse",
+    icon: "target",
     mark: "LX",
     color: "#8a584b",
     softColor: "#eee0dc",
@@ -288,6 +353,7 @@ export const SPORTS: Sport[] = [
   {
     id: "rugby",
     name: "Rugby",
+    icon: "rugby",
     mark: "RG",
     color: "#6d7044",
     softColor: "#e7e7d8",
@@ -313,6 +379,7 @@ export const SPORTS: Sport[] = [
   {
     id: "field-hockey",
     name: "Field Hockey",
+    icon: "hockey-sticks",
     mark: "FH",
     color: "#94714a",
     softColor: "#eee5d8",
@@ -333,6 +400,7 @@ export const SPORTS: Sport[] = [
   {
     id: "water-polo",
     name: "Water Polo",
+    icon: "water-polo",
     mark: "WP",
     color: "#397a88",
     softColor: "#dcecef",
@@ -354,6 +422,7 @@ export const SPORTS: Sport[] = [
   {
     id: "cricket",
     name: "Cricket",
+    icon: "cricket",
     mark: "CR",
     color: "#6f526f",
     softColor: "#eadfeb",
@@ -371,6 +440,262 @@ export const SPORTS: Sport[] = [
       { id: "format", type: "choice", label: "Game structure", prompt: "Which statement correctly distinguishes the major cricket formats?", options: ["Tests can last up to five days; ODIs use 50 overs per side; T20s use 20 overs per side", "Every format lasts exactly 90 minutes", "Every format uses four quarters", "Tests, ODIs, and T20s all use exactly 20 overs"], correct: "Tests can last up to five days; ODIs use 50 overs per side; T20s use 20 overs per side", explanation: "Cricket’s structure depends on its format: Tests, One Day Internationals, and T20 matches use different innings and over limits.", xp: 10 },
       { id: "score", type: "choice", label: "Scoring basics", prompt: "What is the standard boundary scoring in cricket?", options: ["4 runs if the ball reaches the boundary after touching the ground; 6 if it clears on the full", "Every boundary scores 1 run", "Every boundary scores 3 points", "Only running between wickets can score"], correct: "4 runs if the ball reaches the boundary after touching the ground; 6 if it clears on the full", explanation: "A grounded boundary scores 4 runs, while a ball clearing the boundary without touching the ground scores 6.", xp: 10 },
       { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a cricket ground?", options: ["An oval field centered on a 22-yard pitch", "A diamond with four bases", "A court divided by a net", "A pool with floating goals"], correct: "An oval field centered on a 22-yard pitch", explanation: "Cricket is played on an oval field with a 22-yard pitch at its center.", xp: 12 },
+    ],
+  },
+  {
+    id: "tennis",
+    name: "Tennis",
+    icon: "tennis",
+    mark: "TN",
+    color: "#49a75e",
+    softColor: "#ddf3e2",
+    variants: ["Singles", "Doubles", "Youth", "Women’s", "Men’s"],
+    pathLabel: "PLAY STYLE",
+    pathQuestion: "How do you want to own the court?",
+    pathNote: "Build court awareness through serving, returning, baseline patterns, net play, and doubles teamwork.",
+    positions: [
+      { name: "Singles Player", group: "Court Control", focus: "manage the full court and build points with purpose" },
+      { name: "Server", group: "First Strike", focus: "use placement, spin, and the first ball to start the point" },
+      { name: "Returner", group: "First Strike", focus: "read the serve and neutralize or attack the next ball" },
+      { name: "Baseline Player", group: "Court Control", focus: "control depth, direction, and rally tolerance" },
+      { name: "Net Player", group: "Front Court", focus: "close space and finish with smart positioning" },
+      { name: "Doubles Partner", group: "Team Play", focus: "protect team spacing and communicate movement" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the match", prompt: "How many players compete on each side in tennis singles and doubles?", youngPrompt: "How many players are on each side in singles and doubles?", options: ["Singles: 1 per side; doubles: 2 per side", "Singles: 2 per side; doubles: 4 per side", "Every match uses 5 per side", "Both formats use 1 per side"], correct: "Singles: 1 per side; doubles: 2 per side", explanation: "Singles uses one player on each side of the net; doubles uses two players on each side.", youngExplanation: "Singles is one against one. Doubles is two against two.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "Which order correctly shows how tennis scoring units build a match?", options: ["Points build games; games build sets; sets decide the match", "Sets build points; points build games", "Quarters build innings", "Goals build periods"], correct: "Points build games; games build sets; sets decide the match", explanation: "Players win points to win games, games to win sets, and enough sets to win the match.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What is the usual point sequence within a standard tennis game?", options: ["Love, 15, 30, 40, game", "1, 2, 3, touchdown", "10, 20, 30, set", "Love, 10, 20, game"], correct: "Love, 15, 30, 40, game", explanation: "A standard game moves from love to 15, 30, and 40 before game, with deuce rules when both players reach 40.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a tennis court?", options: ["A rectangular court divided by a net with service boxes", "An oval track with lanes", "A pool divided by lane ropes", "A diamond with four bases"], correct: "A rectangular court divided by a net with service boxes", explanation: "Tennis uses a rectangular court divided by a net, with service boxes marking where serves must land.", xp: 12 },
+    ],
+  },
+  {
+    id: "track-field",
+    name: "Track & Field",
+    icon: "run-fast",
+    mark: "TFD",
+    color: "#e7654b",
+    softColor: "#fde2db",
+    variants: ["Youth", "High School", "College", "Olympic"],
+    pathLabel: "EVENT",
+    pathQuestion: "Which event feels like your challenge?",
+    pathNote: "Explore speed, endurance, rhythm, jumping, throwing, and relay teamwork through event-specific decisions.",
+    positions: [
+      { name: "Sprinter", group: "Running", focus: "accelerate efficiently and hold form at top speed" },
+      { name: "Distance Runner", group: "Running", focus: "manage pace, position, and energy across the race" },
+      { name: "Hurdler", group: "Running", focus: "keep rhythm and clear barriers without losing speed" },
+      { name: "Relay Runner", group: "Team Events", focus: "run the assigned leg and exchange the baton safely at speed" },
+      { name: "Jumper", group: "Field Events", focus: "control the approach and convert speed into lift or distance" },
+      { name: "Thrower", group: "Field Events", focus: "build balance, sequence power, and release safely" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the meet", prompt: "Which statement best describes participation in track and field?", youngPrompt: "How do athletes compete in track and field?", options: ["Athletes compete in individual events and can also form relay teams", "Every event uses 11 players at once", "Only teams can enter events", "Every athlete must do every event"], correct: "Athletes compete in individual events and can also form relay teams", explanation: "Most events are individual, while relays combine runners as a team.", youngExplanation: "Many events are one athlete at a time, and relays use a team.", xp: 10 },
+      { id: "format", type: "choice", label: "Meet structure", prompt: "What happens at a track and field meet?", options: ["Multiple running, jumping, and throwing events take place", "One 90-minute match decides everything", "Teams play four quarters", "Athletes complete nine innings"], correct: "Multiple running, jumping, and throwing events take place", explanation: "A meet brings together separate track races and field events, often with qualifying rounds and finals.", xp: 10 },
+      { id: "score", type: "choice", label: "Winning basics", prompt: "How are winners normally decided across track and field events?", options: ["Fastest time, greatest legal distance, or greatest legal height", "Most goals scored", "Fewest innings", "Longest time on the track"], correct: "Fastest time, greatest legal distance, or greatest legal height", explanation: "Races reward the fastest legal time; jumps and throws reward the greatest legal mark.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a typical track and field venue?", options: ["An oval running track surrounding areas for jumps and throws", "A court divided by a net", "A pool with starting blocks", "A rink divided by blue lines"], correct: "An oval running track surrounding areas for jumps and throws", explanation: "Most venues place an oval track around an infield containing jumping and throwing areas.", xp: 12 },
+    ],
+  },
+  {
+    id: "swimming",
+    name: "Swimming",
+    icon: "swim",
+    mark: "SW",
+    color: "#348dca",
+    softColor: "#dceef9",
+    variants: ["Youth", "High School", "College", "Olympic"],
+    pathLabel: "STROKE",
+    pathQuestion: "Which race do you want to master?",
+    pathNote: "Learn starts, turns, pacing, stroke rules, and relay decisions across the major competitive strokes.",
+    positions: [
+      { name: "Freestyle", group: "Strokes", focus: "hold efficient body position, breathing, and race tempo" },
+      { name: "Backstroke", group: "Strokes", focus: "track the lane, rotate efficiently, and time the finish" },
+      { name: "Breaststroke", group: "Strokes", focus: "coordinate pull, breath, kick, and glide legally" },
+      { name: "Butterfly", group: "Strokes", focus: "connect the body wave, pull, kick, and breath rhythm" },
+      { name: "Individual Medley", group: "Multi-Stroke", focus: "manage all four strokes and legal transitions" },
+      { name: "Relay Swimmer", group: "Team Events", focus: "time the exchange and execute the assigned leg" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the race", prompt: "Which statement is true about competitive swimming?", youngPrompt: "How do swimmers race?", options: ["Most races are individual; relays use teams of swimmers", "Every race has 11 swimmers per team in one lane", "All races are relays", "Two teams share one swimmer"], correct: "Most races are individual; relays use teams of swimmers", explanation: "Individual swimmers race in separate lanes, while relay teammates complete different legs in order.", youngExplanation: "Some races are one swimmer, and relays use a team.", xp: 10 },
+      { id: "format", type: "choice", label: "Meet structure", prompt: "How are competitive swimming events commonly organized?", options: ["By stroke and distance, sometimes with heats and finals", "By quarters and touchdowns", "By innings and bases", "Every race uses the same stroke and distance"], correct: "By stroke and distance, sometimes with heats and finals", explanation: "Meets schedule races by stroke and distance, with some competitions advancing swimmers from heats to finals.", xp: 10 },
+      { id: "score", type: "choice", label: "Winning basics", prompt: "What decides the winner of a swimming race?", options: ["The first legal finish with the fastest time", "The most goals", "The highest jump", "The swimmer with the most strokes"], correct: "The first legal finish with the fastest time", explanation: "The fastest swimmer who follows the stroke, turn, and finish rules wins the race.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which feature belongs in a competition pool?", options: ["Marked lanes with starting blocks at one end", "A center net and service boxes", "A diamond with bases", "An oval running track"], correct: "Marked lanes with starting blocks at one end", explanation: "Competition pools use marked lanes and starting blocks, with walls used for turns and finishes.", xp: 12 },
+    ],
+  },
+  {
+    id: "gymnastics",
+    name: "Gymnastics",
+    icon: "gymnastics",
+    mark: "GY",
+    color: "#9557c7",
+    softColor: "#eee0f8",
+    variants: ["General", "Women’s Artistic", "Men’s Artistic", "Youth"],
+    pathLabel: "APPARATUS",
+    pathQuestion: "Where do you want to perform?",
+    pathNote: "Build body control, safe technique, routine awareness, and confident decisions across major apparatus events.",
+    positions: [
+      { name: "Floor Exercise", group: "Performance", focus: "connect tumbling, control, rhythm, and safe landings" },
+      { name: "Vault", group: "Power", focus: "build a consistent approach, block, flight, and landing" },
+      { name: "Uneven Bars", group: "Swing", focus: "connect swing shapes, releases, and safe transitions" },
+      { name: "Balance Beam", group: "Precision", focus: "control alignment, confidence, and landing space" },
+      { name: "Still Rings", group: "Strength", focus: "show strength positions, swing control, and a stable landing" },
+      { name: "Parallel Bars", group: "Swing", focus: "manage support, swing rhythm, transitions, and dismount" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the meet", prompt: "Which statement best describes gymnastics competition?", youngPrompt: "How can gymnasts compete?", options: ["Gymnasts perform individually, and their scores can also count toward a team", "Eleven gymnasts perform on one apparatus at once", "Only teams receive scores", "Every event is a head-to-head race"], correct: "Gymnasts perform individually, and their scores can also count toward a team", explanation: "Each gymnast performs a routine, while selected individual scores can combine for a team result.", youngExplanation: "One gymnast performs at a time, and scores can help the team.", xp: 10 },
+      { id: "format", type: "choice", label: "Meet structure", prompt: "How is an artistic gymnastics meet organized?", options: ["Gymnasts perform routines on different apparatus", "One 90-minute field match", "Four quarters with a ball", "Nine innings"], correct: "Gymnasts perform routines on different apparatus", explanation: "Artistic gymnastics uses separate apparatus events, and the apparatus differ across women’s and men’s programs.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What two major ideas contribute to an elite gymnastics routine score?", options: ["Difficulty and execution", "Goals and assists", "Runs and wickets", "Speed and possession only"], correct: "Difficulty and execution", explanation: "Judges evaluate what skills were attempted and how accurately the routine was performed, including deductions.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which item is a gymnastics apparatus?", options: ["Balance beam", "Pitcher’s mound", "Goalpost", "Lane rope"], correct: "Balance beam", explanation: "The balance beam is one of the apparatus used in women’s artistic gymnastics.", xp: 12 },
+    ],
+  },
+  {
+    id: "pickleball",
+    name: "Pickleball",
+    icon: "table-tennis",
+    mark: "PB",
+    color: "#5e9c45",
+    softColor: "#e3f2dc",
+    variants: ["General"],
+    pathLabel: "PLAY STYLE",
+    pathQuestion: "Where do you want to own the rally?",
+    pathNote: "Learn serving, returning, kitchen play, court movement, and doubles teamwork on the pickleball court.",
+    positions: [
+      { name: "Server", group: "First Ball", focus: "start the point with a legal serve and purposeful placement" },
+      { name: "Returner", group: "First Ball", focus: "return deep and move into strong court position" },
+      { name: "Baseline Player", group: "Court Zones", focus: "build the rally before moving forward" },
+      { name: "Kitchen Player", group: "Court Zones", focus: "control the non-volley line with patience and soft shots" },
+      { name: "Doubles Partner", group: "Team Play", focus: "move with a partner and protect the middle" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the match", prompt: "How many players are on each side in pickleball singles and doubles?", youngPrompt: "How many players play on each side?", options: ["Singles: 1; doubles: 2", "Singles: 2; doubles: 4", "Both always use 5", "Both always use 1"], correct: "Singles: 1; doubles: 2", explanation: "Singles uses one player per side and doubles uses two players per side.", youngExplanation: "Singles is one against one. Doubles is two against two.", xp: 10 },
+      { id: "format", type: "choice", label: "Start the rally", prompt: "Where must a pickleball serve travel?", youngPrompt: "Where should the serve go?", options: ["Diagonally into the opposite service court", "Straight into the kitchen", "Over the back fence", "Into either sideline"], correct: "Diagonally into the opposite service court", explanation: "The serve travels crosscourt into the opponent’s service court and must clear the non-volley zone.", youngExplanation: "Serve across the net into the opposite box.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What is a common winning score for a pickleball game?", youngPrompt: "Many pickleball games are played to what score?", options: ["11, win by 2", "6, win by 1", "21 with no lead needed", "100"], correct: "11, win by 2", explanation: "Traditional games are commonly played to 11 and must be won by two points.", youngExplanation: "A common game goes to 11, and the winner leads by 2.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the court", prompt: "What is the area next to the net called?", youngPrompt: "What is the zone by the net called?", options: ["The non-volley zone or kitchen", "The end zone", "The penalty box", "The mound"], correct: "The non-volley zone or kitchen", explanation: "The seven-foot area on both sides of the net is the non-volley zone, often called the kitchen.", youngExplanation: "The zone by the net is called the kitchen.", xp: 12 },
+    ],
+  },
+  {
+    id: "badminton",
+    name: "Badminton",
+    icon: "badminton",
+    mark: "BD",
+    color: "#4979bd",
+    softColor: "#e0eafb",
+    variants: ["General"],
+    pathLabel: "PLAY STYLE",
+    pathQuestion: "How do you want to control the court?",
+    pathNote: "Build racket control, movement, serving, front-court reactions, and rear-court attack with the shuttle.",
+    positions: [
+      { name: "Singles Player", group: "Court Control", focus: "cover the full court and move the opponent" },
+      { name: "Server", group: "First Shot", focus: "start the rally legally with accurate placement" },
+      { name: "Receiver", group: "First Shot", focus: "read the serve and take control of the next shot" },
+      { name: "Front-Court Player", group: "Doubles", focus: "intercept the shuttle and protect the net" },
+      { name: "Rear-Court Player", group: "Doubles", focus: "create pressure with clears, drops, and smashes" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the match", prompt: "How many players are on each side in badminton singles and doubles?", youngPrompt: "How many players play on each side?", options: ["Singles: 1; doubles: 2", "Singles: 2; doubles: 4", "Both use 5", "Both use 11"], correct: "Singles: 1; doubles: 2", explanation: "Singles uses one player per side and doubles uses two.", youngExplanation: "Singles is one against one. Doubles is two against two.", xp: 10 },
+      { id: "format", type: "choice", label: "Match structure", prompt: "How is a standard badminton match normally decided?", youngPrompt: "How many games can decide a badminton match?", options: ["Best of 3 games", "Four quarters", "Nine innings", "One 90-minute game"], correct: "Best of 3 games", explanation: "The first side to win two games wins a standard best-of-three match.", youngExplanation: "Win two games to win the match.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "How many points normally win a badminton game before deuce rules?", youngPrompt: "A badminton game normally goes to what score?", options: ["21", "11", "6", "40"], correct: "21", explanation: "Games use rally scoring to 21; at 20-all a side must lead by two, up to a 30-point cap.", youngExplanation: "A game normally goes to 21 points.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the court", prompt: "What do players hit across the net in badminton?", youngPrompt: "What flies across the badminton net?", options: ["A shuttlecock", "A baseball", "A puck", "A football"], correct: "A shuttlecock", explanation: "Badminton uses a feathered or synthetic shuttlecock rather than a ball.", youngExplanation: "Players hit a shuttlecock across the net.", xp: 12 },
+    ],
+  },
+  {
+    id: "golf",
+    name: "Golf",
+    icon: "golf",
+    mark: "GF",
+    color: "#397957",
+    softColor: "#deeee5",
+    variants: ["General"],
+    pathLabel: "SHOT",
+    pathQuestion: "Which part of the hole will you master?",
+    pathNote: "Learn safe course habits, club choices, shot planning, short game, putting, and honest scoring.",
+    positions: [
+      { name: "Tee Shot", group: "Long Game", focus: "choose a safe target and start the hole in play" },
+      { name: "Approach Shot", group: "Long Game", focus: "match club, distance, lie, and safe landing area" },
+      { name: "Short Game", group: "Scoring Zone", focus: "control chips and pitches near the green" },
+      { name: "Putter", group: "Scoring Zone", focus: "read line and speed to roll the ball toward the hole" },
+      { name: "Course Manager", group: "Strategy", focus: "choose smart targets and avoid unnecessary risk" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the round", prompt: "How can golfers compete?", youngPrompt: "Can golf be played alone or with others?", options: ["Individually or in team formats", "Only with 11 players", "Only in pairs", "Only as one giant team"], correct: "Individually or in team formats", explanation: "Golf includes individual stroke or match play and several team formats.", youngExplanation: "Golfers can compete alone or as part of a team.", xp: 10 },
+      { id: "format", type: "choice", label: "Round structure", prompt: "How many holes are in a traditional full round of golf?", youngPrompt: "How many holes are in a full round?", options: ["18", "4", "9 only", "21"], correct: "18", explanation: "A traditional full round contains 18 holes, though shorter rounds are also played.", youngExplanation: "A full round usually has 18 holes.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "In stroke play, what is the main scoring goal?", youngPrompt: "Do golfers want more strokes or fewer strokes?", options: ["Use the fewest strokes", "Use the most strokes", "Score the most touchdowns", "Finish with the most penalties"], correct: "Use the fewest strokes", explanation: "In stroke play, the player with the lowest total number of strokes wins.", youngExplanation: "Fewer strokes make the better score.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the hole", prompt: "Where does each golf hole begin?", youngPrompt: "Where do golfers start a hole?", options: ["The teeing area", "The putting cup", "The bunker", "The clubhouse"], correct: "The teeing area", explanation: "Each hole starts with a stroke from the teeing area and ends when the ball is holed.", youngExplanation: "A hole starts at the teeing area.", xp: 12 },
+    ],
+  },
+  {
+    id: "cycling",
+    name: "Cycling",
+    icon: "bike",
+    mark: "CY",
+    color: "#d46c32",
+    softColor: "#f8e5d9",
+    variants: ["General"],
+    pathLabel: "DISCIPLINE",
+    pathQuestion: "Where do you want to ride?",
+    pathNote: "Explore road, track, mountain bike, BMX, pacing, bike control, race awareness, and helmet-first safety.",
+    positions: [
+      { name: "Road Rider", group: "Road", focus: "manage pace, position, corners, and changing terrain" },
+      { name: "Track Sprinter", group: "Track", focus: "use timing, acceleration, and line choice on the velodrome" },
+      { name: "Pursuit Rider", group: "Track", focus: "hold a sustainable pace and smooth racing line" },
+      { name: "Mountain Biker", group: "Off-Road", focus: "read terrain and control braking, balance, and traction" },
+      { name: "BMX Racer", group: "BMX", focus: "launch from the gate and choose fast safe lines" },
+      { name: "Para Cyclist", group: "Adaptive", focus: "use the right cycle and race plan for the classification" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the race", prompt: "Which statement is true about cycling competition?", youngPrompt: "Can cyclists race alone and on teams?", options: ["Riders can compete individually and as teammates", "Every race uses exactly 11 riders", "Cycling has no team events", "Only two riders may enter"], correct: "Riders can compete individually and as teammates", explanation: "Cycling includes individual races, team events, and team-supported individual results.", youngExplanation: "Cyclists can race alone or work with teammates.", xp: 10 },
+      { id: "format", type: "choice", label: "Sport structure", prompt: "Which list contains major cycling disciplines?", youngPrompt: "Which are types of bike racing?", options: ["Road, track, mountain bike, and BMX", "Swimming, vault, and hockey", "Only road racing", "Baseball and softball"], correct: "Road, track, mountain bike, and BMX", explanation: "The UCI oversees road, track, mountain bike, BMX, cyclo-cross, trials, indoor cycling, and other cycling disciplines.", youngExplanation: "Road, track, mountain bike, and BMX are all cycling sports.", xp: 10 },
+      { id: "score", type: "choice", label: "Winning basics", prompt: "What usually decides a cycling race winner?", youngPrompt: "Who usually wins a bike race?", options: ["The rider or team that meets the event goal fastest", "The rider with the most fouls", "The tallest rider", "The rider with the heaviest bike"], correct: "The rider or team that meets the event goal fastest", explanation: "Most races reward the fastest finish or time, while some events use points or elimination rules.", youngExplanation: "Most races reward the fastest legal ride.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Safety first", prompt: "Which item protects a cyclist’s head?", youngPrompt: "What should protect a rider’s head?", options: ["A properly fitted helmet", "A wristband", "A water bottle", "A race number"], correct: "A properly fitted helmet", explanation: "A properly fitted helmet is essential protective equipment for riding and racing.", youngExplanation: "Wear a helmet that fits correctly.", xp: 12 },
+    ],
+  },
+  {
+    id: "mma",
+    name: "Mixed Martial Arts",
+    icon: "mixed-martial-arts",
+    mark: "MMA",
+    color: "#9b4d55",
+    softColor: "#f3dfe2",
+    variants: ["General"],
+    pathLabel: "SKILL",
+    pathQuestion: "Which part of the contest will you study?",
+    pathNote: "Learn the rules, scoring, distance, defense, and referee safety of regulated MMA. Physical techniques belong with qualified coaching and proper equipment.",
+    positions: [
+      { name: "Striker", group: "Standing", focus: "manage distance and use legal accurate offense with defense" },
+      { name: "Clinch Fighter", group: "Standing", focus: "control position safely at close range" },
+      { name: "Wrestler", group: "Transitions", focus: "change levels, control balance, and secure position" },
+      { name: "Grappler", group: "Ground", focus: "improve position while protecting against submissions" },
+      { name: "Defensive Specialist", group: "Safety", focus: "recognize danger, defend intelligently, and follow the referee" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the bout", prompt: "How many competitors are active in a standard MMA bout?", youngPrompt: "How many athletes compete in one MMA bout?", options: ["Two", "Five per team", "Eleven per team", "Three at once"], correct: "Two", explanation: "A standard bout matches two regulated competitors under a referee’s supervision.", youngExplanation: "Two trained athletes compete while a referee watches.", xp: 10 },
+      { id: "format", type: "choice", label: "Bout structure", prompt: "How long is a professional Unified Rules MMA round?", youngPrompt: "How long is one professional MMA round?", options: ["5 minutes", "15 minutes", "One hour", "30 seconds"], correct: "5 minutes", explanation: "Professional rounds last five minutes with a one-minute rest between rounds.", youngExplanation: "One professional round lasts five minutes.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What should judges evaluate first under the Unified Rules?", youngPrompt: "What do MMA judges look for most?", options: ["Effective striking and grappling", "Costume color", "Crowd noise", "Height alone"], correct: "Effective striking and grappling", explanation: "Judges prioritize effective striking and grappling, followed by effective aggressiveness and fighting-area control when needed.", youngExplanation: "Judges look for effective, legal striking and grappling.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Safety first", prompt: "Who is authorized to stop an MMA contest for safety?", youngPrompt: "Who can stop the bout to protect an athlete?", options: ["The referee", "A spectator", "The scorekeeper alone", "Another athlete"], correct: "The referee", explanation: "The referee is the sole arbiter of the bout and may stop it to protect a competitor.", youngExplanation: "The referee can stop the bout to keep athletes safe.", xp: 12 },
+    ],
+  },
+  {
+    id: "wrestling",
+    name: "Wrestling",
+    icon: "human-handsdown",
+    mark: "WR",
+    color: "#8057b4",
+    softColor: "#eadff5",
+    variants: ["General"],
+    pathLabel: "STYLE / POSITION",
+    pathQuestion: "Which wrestling room will you enter?",
+    pathNote: "Explore freestyle, Greco-Roman, folkstyle, takedowns, control, escapes, and safe mat awareness.",
+    positions: [
+      { name: "Freestyle Wrestler", group: "Styles", focus: "attack legs, control positions, and expose the opponent’s back" },
+      { name: "Greco-Roman Wrestler", group: "Styles", focus: "use upper-body control and legal throws without leg attacks" },
+      { name: "Folkstyle Wrestler", group: "Styles", focus: "earn and maintain control while building toward a pin" },
+      { name: "Neutral Position", group: "Match Position", focus: "create angles and secure a controlled takedown" },
+      { name: "Top Position", group: "Match Position", focus: "maintain control and turn the opponent safely" },
+      { name: "Bottom Position", group: "Match Position", focus: "build a base and earn an escape or reversal" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the bout", prompt: "How many wrestlers are active in one standard bout?", youngPrompt: "How many wrestlers compete in one match?", options: ["Two", "Five per team", "Eleven per team", "Four at once"], correct: "Two", explanation: "A wrestling bout matches two athletes in the same weight category.", youngExplanation: "Two wrestlers compete in one match.", xp: 10 },
+      { id: "format", type: "choice", label: "Know the styles", prompt: "What is a key difference between freestyle and Greco-Roman wrestling?", youngPrompt: "Which style does not allow leg attacks?", options: ["Greco-Roman does not allow active leg attacks", "Freestyle has no takedowns", "Both ban all throws", "Greco-Roman uses a ball"], correct: "Greco-Roman does not allow active leg attacks", explanation: "Freestyle allows attacks involving the legs; Greco-Roman action is limited to the upper body and arms.", youngExplanation: "Greco-Roman wrestlers use upper-body attacks, not leg attacks.", xp: 10 },
+      { id: "score", type: "choice", label: "Winning basics", prompt: "What immediately wins a wrestling bout by fall?", youngPrompt: "What is another name for winning by a fall?", options: ["Pinning both shoulders to the mat", "Stepping out once", "Scoring one point", "Calling timeout"], correct: "Pinning both shoulders to the mat", explanation: "Holding both shoulder blades to the mat for the required confirmation wins by fall, commonly called a pin.", youngExplanation: "A pin wins the match by fall.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Where does a wrestling bout take place?", youngPrompt: "Where do wrestlers compete?", options: ["On a marked wrestling mat", "In a swimming lane", "On a baseball diamond", "Across a tennis net"], correct: "On a marked wrestling mat", explanation: "Wrestlers compete inside a marked circular area on a padded mat.", youngExplanation: "Wrestlers compete on a padded mat.", xp: 12 },
     ],
   },
 ];
@@ -755,6 +1080,205 @@ const CENTER_CHALLENGES: Challenge[] = [
   },
 ];
 
+const POSITION_READS: Record<string, Record<string, string>> = {
+  football: {
+    Quarterback: "the safety shell, box count, and post-snap rotation",
+    "Running Back": "the defensive front, linebacker flow, and leverage of the blocks",
+    Fullback: "the point of attack and the first unblocked dangerous defender",
+    "Wide Receiver": "cornerback cushion, inside-out leverage, and nearby safety help",
+    "Tight End": "the end defender, second-level leverage, and whether the assignment becomes route or protection",
+    "Left Tackle": "the edge rusher's width, stance, and first two steps",
+    "Left Guard": "the defensive tackle's shade and possible pressure through the inside gap",
+    Center: "the front structure, both A-gaps, and second-level pressure threats",
+    "Right Guard": "the defensive tackle's shade and possible pressure through the inside gap",
+    "Right Tackle": "the edge rusher's alignment, power angle, and inside counter threat",
+    "Defensive Tackle": "the near lineman's first step and the movement of the center-guard triangle",
+    "Defensive End": "the tackle or tight end's release and the quarterback-running back mesh",
+    "Inside Linebacker": "the guard triangle, backfield action, and open interior gap",
+    "Outside Linebacker": "the end player on the line, backfield flow, and force/contain responsibility",
+    Cornerback: "receiver split, release, hip angle, and available safety help",
+    Safety: "formation strength, vertical threats, and the quarterback's shoulders",
+    Kicker: "the holder's spot, plant-foot location, and the ball's contact line",
+    Punter: "snap location, rush lane, and coverage direction",
+    "Long Snapper": "target line, operation rhythm, and the immediate protection threat",
+    Returner: "ball flight, coverage leverage, and the safest north-south lane",
+  },
+  "flag-football": {
+    Quarterback: "defender spacing, the rush clock, and the first open throwing window",
+    "Center / Snapper": "snap target, rusher alignment, and open release space",
+    Receiver: "defender leverage, zone windows, and route spacing",
+    "Ball Carrier": "flag position, pursuit angle, and open space",
+    Rusher: "the legal rush point, quarterback setup, and throwing-hand escape lane",
+    "Short-Zone Defender": "the quarterback's eyes and receivers entering the short window",
+    "Deep Defender": "vertical threats, route combinations, and the deepest open space",
+  },
+  basketball: {
+    "Point Guard": "floor balance, help-defender position, and the next advantage",
+    "Shooting Guard": "closeout speed, shooting space, and the driving gap",
+    "Small Forward": "matchup leverage, weak-side space, and the next connecting pass",
+    "Power Forward": "screen angle, rebounding position, and help responsibility",
+    Center: "rim pressure, ball-handler angle, and the most dangerous rebounder",
+  },
+  soccer: {
+    Goalkeeper: "ball pressure, runners behind the line, and the space to claim",
+    "Center Back": "ball pressure, the striker's movement, and depth behind the line",
+    Fullback: "the winger's position, inside support, and space beyond the wide channel",
+    "Defensive Midfielder": "the space between lines, the opponent's attacking midfielder, and the safe outlet",
+    "Central Midfielder": "shoulder pressure, teammate spacing, and the next open line",
+    Winger: "fullback leverage, space behind, and teammates arriving in the box",
+    Striker: "center-back body shape, the offside line, and the finishing window",
+  },
+  volleyball: {
+    Setter: "pass quality, blocker position, and available hitter matchups",
+    "Outside Hitter": "set location, blocker hands, and deep-court defender position",
+    Opposite: "set tempo, outside hitter approach, and the blocking matchup",
+    "Middle Blocker": "setter body position, pass location, and opposing hitter approach",
+    Libero: "server contact, hitter shoulder, and seams in the defensive shape",
+    "Defensive Specialist": "server target, hitter approach, and uncovered floor space",
+  },
+  baseball: {
+    Pitcher: "catcher target, hitter timing, and the count",
+    Catcher: "hitter setup, pitcher command, runners, and the game situation",
+    "First Base": "ball contact, throw path, and runner position",
+    "Second Base": "ball angle, force-play responsibility, and shortstop movement",
+    Shortstop: "contact direction, runner speed, and relay responsibility",
+    "Third Base": "hitter setup, bunt threat, and the speed of contact",
+    Outfielder: "swing contact, ball flight, and runner advancement",
+  },
+  softball: {
+    Pitcher: "catcher target, batter timing, and the count",
+    Catcher: "batter setup, pitch movement, runners, and bunt threat",
+    "Corner Infielder": "batter stance, bunt angle, and line responsibility",
+    "Middle Infielder": "contact angle, force-play responsibility, and runner speed",
+    Outfielder: "contact, ball flight, and the lead runner",
+  },
+  hockey: {
+    Center: "puck pressure, middle-lane support, and threats through all three zones",
+    Winger: "puck side, wall pressure, and open ice toward the net",
+    Defenseman: "forecheck pressure, middle-lane danger, and the first breakout option",
+    Goaltender: "puck release, screen position, and rebound danger",
+  },
+  lacrosse: {
+    Attack: "defender approach, slide position, and space around the crease",
+    Midfielder: "transition numbers, matchup leverage, and two-way recovery space",
+    Defense: "dodger hips, slide responsibility, and the dangerous middle",
+    Goalie: "shooter hands, release angle, and off-ball threats",
+    "Faceoff Specialist": "opponent hand position, clamp angle, and exit space",
+  },
+  rugby: {
+    Prop: "bind, body height, and pressure through the scrum",
+    Hooker: "throwing target, jumper timing, and front-row connection",
+    Lock: "lineout call, lifting timing, and contact shape",
+    Flanker: "tackle outcome, arriving support, and breakdown space",
+    "Scrum-half": "ruck speed, defensive spacing, and the next receiver",
+    "Fly-half": "defensive line speed, backfield space, and attacking numbers",
+    Center: "defender shoulders, support line, and midfield space",
+    Wing: "edge defender, cover defense, and touchline space",
+    Fullback: "kick flight, chase line, and counterattack support",
+  },
+  "field-hockey": {
+    Forward: "defender body shape, space behind, and circle-entry support",
+    Midfielder: "pressure direction, teammate spacing, and transition numbers",
+    Defender: "ball-carrier angle, circle danger, and the safe outlet",
+    Goalkeeper: "ball release, screen position, and the next scoring threat",
+  },
+  "water-polo": {
+    Center: "defender position, entry-pass angle, and space near goal",
+    Driver: "defender hips, open water, and passing-lane timing",
+    Point: "defensive shape, center position, and the next perimeter advantage",
+    "Center Defender": "center leverage, ball position, and foul risk",
+    Goalkeeper: "shooter arm, passing threats, and the near-post angle",
+  },
+  cricket: {
+    Batter: "bowler release, line, length, and field placement",
+    "Fast Bowler": "batter setup, seam position, and target length",
+    "Spin Bowler": "batter movement, flight, and the field set",
+    Wicketkeeper: "bowler release, batter edge, and stumping chance",
+    Fielder: "batter contact, likely scoring area, and backing-up responsibility",
+    Captain: "batter intent, bowler rhythm, match situation, and field gaps",
+  },
+  tennis: {
+    "Singles Player": "opponent court position, recovery space, and the next open target",
+    Server: "returner position, service target, and the planned first ball",
+    Returner: "server toss, contact direction, and the first available response",
+    "Baseline Player": "ball depth, opponent balance, and the open direction",
+    "Net Player": "opponent contact, passing lane, and space through the middle",
+    "Doubles Partner": "partner position, middle responsibility, and opponent formation",
+  },
+  "track-field": {
+    Sprinter: "start signal, body angle, and acceleration rhythm",
+    "Distance Runner": "race pace, pack position, breathing, and remaining distance",
+    Hurdler: "barrier spacing, lead-leg rhythm, and steps between hurdles",
+    "Relay Runner": "exchange-zone mark, teammate speed, and baton hand",
+    Jumper: "approach mark, takeoff position, and landing area",
+    Thrower: "sector, body balance, power sequence, and release point",
+  },
+  swimming: {
+    Freestyle: "lane line, body alignment, breathing pattern, and race tempo",
+    Backstroke: "backstroke flags, lane direction, rotation, and wall distance",
+    Breaststroke: "pull-kick timing, glide length, and legal wall contact",
+    Butterfly: "body rhythm, breath timing, and simultaneous wall contact",
+    "Individual Medley": "stroke order, transition rules, and energy across each leg",
+    "Relay Swimmer": "incoming teammate, wall contact, and takeoff timing",
+  },
+  gymnastics: {
+    "Floor Exercise": "tumbling line, landing space, body shape, and routine rhythm",
+    Vault: "run mark, board contact, hand placement, and landing line",
+    "Uneven Bars": "swing shape, hand position, release timing, and next bar",
+    "Balance Beam": "beam center, body alignment, landing foot, and routine rhythm",
+    "Still Rings": "ring stability, body line, hold position, and dismount timing",
+    "Parallel Bars": "support position, swing line, hand placement, and dismount space",
+  },
+  pickleball: {
+    Server: "receiver position, diagonal service box, and legal contact",
+    Returner: "serve depth, bounce, and open space behind the serving team",
+    "Baseline Player": "ball depth, opponent balance, and safe space to move forward",
+    "Kitchen Player": "ball height, opponent paddle, and open dink space",
+    "Doubles Partner": "partner movement, middle responsibility, and opponent spacing",
+  },
+  badminton: {
+    "Singles Player": "opponent position, recovery base, and open court space",
+    Server: "receiver stance, legal service height, and target box",
+    Receiver: "server motion, shuttle direction, and first attacking chance",
+    "Front-Court Player": "shuttle height, net space, and partner position",
+    "Rear-Court Player": "shuttle depth, opponent balance, and partner coverage",
+  },
+  golf: {
+    "Tee Shot": "hole shape, hazards, wind, and the widest safe target",
+    "Approach Shot": "distance, lie, wind, hazards, and green target",
+    "Short Game": "lie, landing spot, slope, and room for the ball to roll",
+    Putter: "starting line, slope, speed, and distance to the hole",
+    "Course Manager": "score situation, safe zones, hazards, and next-shot angle",
+  },
+  cycling: {
+    "Road Rider": "road surface, rider movement, wind, corners, and course direction",
+    "Track Sprinter": "opponent position, banking, lap count, and launch distance",
+    "Pursuit Rider": "lap splits, racing line, effort level, and remaining distance",
+    "Mountain Biker": "trail surface, obstacle line, braking point, and available grip",
+    "BMX Racer": "gate timing, first obstacle, rider position, and fastest safe line",
+    "Para Cyclist": "course, classification equipment, pacing, and race position",
+  },
+  mma: {
+    Striker: "distance, opponent stance, legal target, and return threat",
+    "Clinch Fighter": "head position, underhooks, balance, and cage space",
+    Wrestler: "stance, hips, balance, and safe takedown opening",
+    Grappler: "position, base, submission danger, and path to improve control",
+    "Defensive Specialist": "distance, opponent attack, boundary, and referee commands",
+  },
+  wrestling: {
+    "Freestyle Wrestler": "stance, lead leg, hand position, and exposure risk",
+    "Greco-Roman Wrestler": "upper-body contact, hip position, and legal throwing angle",
+    "Folkstyle Wrestler": "control, escape space, riding position, and pinning danger",
+    "Neutral Position": "stance, distance, opponent lead, and attack angle",
+    "Top Position": "hip control, opponent base, turn option, and legal pressure",
+    "Bottom Position": "hand control, base, open escape side, and reversal chance",
+  },
+};
+
+function positionRead(sport: Sport, position: Position) {
+  return POSITION_READS[sport.id]?.[position.name] ?? `the action developing around the ${position.group.toLowerCase()}`;
+}
+
 export function buildPositionModule(sport: Sport, position: Position): LearningModule {
   if (sport.id === "football" && position.name === "Center") {
     return {
@@ -771,6 +1295,19 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
   }
 
   const responsibility = position.focus.charAt(0).toUpperCase() + position.focus.slice(1);
+  const read = positionRead(sport, position);
+  const readableRead = read.charAt(0).toUpperCase() + read.slice(1);
+  const firstRead = read.split(",")[0];
+  const execution = `Use the read to ${position.focus}`;
+  const relatedResponsibilities = sport.positions
+    .filter((candidate) => candidate.name !== position.name)
+    .map((candidate) => candidate.focus.charAt(0).toUpperCase() + candidate.focus.slice(1));
+  const advancedRoleOptions = [...new Set([
+    responsibility,
+    ...relatedResponsibilities,
+    `Support the ${position.group.toLowerCase()} without adjusting to the developing play`,
+    "Wait for another player to take control of the assignment",
+  ])].slice(0, 4);
   return {
     id: `${sport.id}-position-${position.name.toLowerCase().replaceAll(" ", "-")}-intro`,
     sportId: sport.id,
@@ -778,8 +1315,8 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
     pathway: "position",
     position: position.name,
     title: `${position.name} Foundations`,
-    description: `A representative ${position.name} module focused on recognition and responsibility.`,
-    estimatedMinutes: 3,
+    description: `Read ${read}, make the call, and execute the ${position.name}'s job.`,
+    estimatedMinutes: 4,
     challenges: [
       {
         id: `${sport.id}-${position.name}-role`,
@@ -787,42 +1324,67 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
         type: "choice",
         label: "Know your job",
         prompt: `Which description best matches the ${position.name}’s core responsibility?`,
+        youngPrompt: `What is the ${position.name}'s main job?`,
         options: [responsibility, "Ignore team shape and follow the ball", "Focus only on the scoreboard", "Wait for a teammate to make every call"],
+        advancedOptions: advancedRoleOptions,
         correct: responsibility,
         explanation: `At its core, the ${position.name} must ${position.focus}.`,
+        youngExplanation: `The ${position.name}'s main job is to ${position.focus}.`,
         xp: 10,
       },
       {
         id: `${sport.id}-${position.name}-awareness`,
         conceptId: `${sport.id}-${position.name}-awareness`,
-        type: "truefalse",
-        label: "Position IQ",
-        prompt: `A strong ${position.name} reads teammates and opponents before reacting.`,
-        options: ["True", "False"],
-        correct: "True",
-        explanation: "Position IQ starts with an early picture of the situation, then a decisive response.",
-        xp: 10,
+        type: "choice",
+        label: "Spot the first clue",
+        prompt: `What should the ${position.name} read before committing to the play?`,
+        youngPrompt: `What should a ${position.name} look at first?`,
+        options: [readableRead, "Only the scoreboard", "Only the nearest teammate", "The crowd and the sideline"],
+        advancedOptions: [readableRead, `Only ${firstRead}, without checking the rest of the play`, `The original plan, even when ${firstRead} changes`, "The nearest matchup after the decision window has already closed"],
+        correct: readableRead,
+        explanation: `That picture—${read}—gives the ${position.name} the information needed to act early instead of guessing.`,
+        youngExplanation: `Looking at ${read} helps the ${position.name} make a smart choice.`,
+        xp: 12,
       },
       {
         id: `${sport.id}-${position.name}-decision`,
         conceptId: `${sport.id}-${position.name}-decision`,
         type: "scenario",
-        label: "What’s your read?",
-        prompt: `As the ${position.name}, what is the best first step when the opponent changes shape unexpectedly?`,
-        options: ["Scan, communicate, then adjust", "Freeze and wait", "Abandon the position", "Repeat the same action without looking"],
-        correct: "Scan, communicate, then adjust",
-        explanation: "Good players gather the new picture, communicate what changed, and adjust within the team plan.",
+        label: "Make the game call",
+        prompt: `You are the ${position.name}. The picture around you changes after you read ${read}. Which response best protects your assignment?`,
+        youngPrompt: `You are the ${position.name}, and the play changes. What is your best move?`,
+        options: [execution, "Chase the action and leave the assignment", "Freeze until a teammate solves it", "Repeat the original action without looking"],
+        advancedOptions: [execution, "Stay with the original action even after the read changes", "Leave the primary assignment early to help the nearest teammate", "Wait for a teammate to solve the change before reacting"],
+        correct: execution,
+        explanation: `The read only matters when it connects to the job. The smart response is to ${position.focus}.`,
+        youngExplanation: `Use what you see, then ${position.focus}.`,
+        xp: 15,
+      },
+      {
+        id: `${sport.id}-${position.name}-tools`,
+        conceptId: `${sport.id}-${position.name}-tools`,
+        type: "multi",
+        label: "Build your toolkit",
+        prompt: `Which TWO habits belong in a high-IQ ${position.name}'s toolkit?`,
+        youngPrompt: `Pick TWO things that help a ${position.name} play smart.`,
+        options: [`Read ${read}`, responsibility, "Ignore teammates' calls", "Watch only the scoreboard"],
+        advancedOptions: [`Read ${read}`, responsibility, `React to ${firstRead} before confirming the full picture`, "Change the assignment without communicating the adjustment"],
+        correct: [`Read ${read}`, responsibility],
+        explanation: `Strong position play combines information—reading ${read}—with responsibility: ${position.focus}.`,
+        youngExplanation: `A smart ${position.name} looks for the right clue and does the position's job.`,
         xp: 15,
       },
       {
         id: `${sport.id}-${position.name}-sequence`,
         conceptId: `${sport.id}-${position.name}-process`,
         type: "ordering",
-        label: "Decision process",
-        prompt: "Arrange a high-IQ decision sequence.",
-        options: ["Scan", "Recognize", "Communicate", "Execute"],
-        correct: ["Scan", "Recognize", "Communicate", "Execute"],
-        explanation: "Seeing early creates time to recognize, communicate, and execute with confidence.",
+        label: "Run the rep",
+        prompt: `Tap the ${position.name}'s decision steps in the best order.`,
+        youngPrompt: `Tap the steps in order to help the ${position.name} make the play.`,
+        options: ["Look for the most important clue", "Decide what the clue means", "Communicate the plan", "Do your job"],
+        correct: ["Look for the most important clue", "Decide what the clue means", "Communicate the plan", "Do your job"],
+        explanation: `Position IQ is a repeatable process: identify the most important clue (${read}), decide what it means, communicate the plan, then ${position.focus}.`,
+        youngExplanation: `Look for a clue, understand it, call it out, then do your job.`,
         xp: 15,
       },
     ],

@@ -469,6 +469,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 .profile-age-options, .color-options { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 18px; }
 .profile-age-options button { min-width: 44px; height: 40px; padding: 0 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--navy); font-size: 10px; font-weight: 950; cursor: pointer; }
 .profile-age-options button.active { border-color: var(--teal); background: var(--teal); color: white; box-shadow: 2px 2px 0 color-mix(in srgb,var(--teal) 25%,transparent); }
+.profile-age-locked { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; padding: 11px 13px; border: 1px solid var(--line); background: var(--surface-2); }
+.profile-age-locked strong { display: grid; min-width: 52px; height: 40px; place-items: center; background: var(--teal); color: white; font-size: 11px; }
+.profile-age-locked span { color: var(--muted); font-family: Georgia,serif; font-size: 10px; line-height: 1.35; }
 .color-options button { width: 38px; height: 38px; border: 4px solid var(--surface); border-radius: 50%; box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
 .color-options button.active { box-shadow: 0 0 0 3px var(--gold); transform: scale(.9); }
 
@@ -489,6 +492,114 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 
 .result-player { --player-color: var(--teal); position: absolute; top: 14px; right: 22px; z-index: 2; display: grid; width: 118px; height: 118px; place-items: end center; overflow: hidden; border: 2px solid var(--player-color); border-radius: 50%; background: color-mix(in srgb,var(--player-color) 17%,var(--surface)); animation: result-player-enter 650ms 180ms cubic-bezier(.2,1.4,.3,1) both; }
 .result-player .mini-character-image { width: 125px; height: 125px; animation: avatar-idle 2.4s 850ms ease-in-out infinite; }
+
+/* XP league */
+.league-safety-banner { display: flex; gap: 14px; align-items: center; margin: 25px 0 18px; padding: 14px 17px; border: 1px solid color-mix(in srgb,var(--teal) 45%,var(--line)); border-radius: 14px; background: color-mix(in srgb,var(--teal) 8%,var(--surface)); }
+.league-safety-banner > span { display: grid; width: 39px; height: 39px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--teal); color: white; }
+.league-safety-banner strong { color: var(--teal); font-size: 8px; letter-spacing: .12em; }
+.league-safety-banner p { margin: 4px 0 0; color: var(--muted); font-family: Georgia,serif; font-size: 10px; line-height: 1.4; }
+.league-layout { display: grid; grid-template-columns: 270px minmax(0,1fr); gap: 16px; align-items: start; }
+.league-player-card { display: flex; min-height: 390px; align-items: center; flex-direction: column; padding: 22px; overflow: hidden; border-top: 7px solid var(--player-color); border-radius: 18px; background: var(--surface); box-shadow: 7px 8px 0 var(--shadow); }
+.league-player-card > span { align-self: flex-start; color: var(--teal); font-size: 8px; font-weight: 950; letter-spacing: .13em; }
+.league-player-card .mini-character-image { width: 155px; height: 155px; margin: 8px 0 3px; }
+.league-player-card > strong { font-size: 45px; letter-spacing: -.06em; line-height: 1; }
+.league-player-card > small { color: var(--muted); font-size: 7px; font-weight: 950; letter-spacing: .12em; }
+.league-player-card > div { width: 100%; height: 8px; margin-top: 22px; overflow: hidden; border-radius: 4px; background: var(--surface-2); }
+.league-player-card > div b { display: block; height: 100%; border-radius: inherit; background: var(--gold); }
+.league-player-card > p { margin: 9px 0 0; color: var(--muted); font-family: Georgia,serif; font-size: 10px; }
+.public-leaderboard, .milestone-league { padding: 18px; border-radius: 18px; background: var(--surface); box-shadow: 7px 8px 0 var(--shadow); }
+.leaderboard-title, .milestone-league > span { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; color: var(--teal); font-size: 8px; font-weight: 950; letter-spacing: .13em; }
+.leaderboard-title small { color: var(--muted); font-size: 7px; letter-spacing: 0; }
+.public-leaderboard article, .milestone-league article { display: grid; min-height: 67px; grid-template-columns: 38px 56px 1fr auto; gap: 10px; align-items: center; padding: 8px; border-bottom: 1px solid var(--line); }
+.public-leaderboard article:last-child, .milestone-league article:last-child { border-bottom: 0; }
+.public-leaderboard article > i, .milestone-league article > i { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-style: normal; font-size: 9px; font-weight: 950; }
+.public-leaderboard article:nth-of-type(1) > i { background: var(--gold); color: #12233b; }
+.public-leaderboard article .mini-character-image { width: 52px; height: 52px; }
+.public-leaderboard article > div, .milestone-league article > div { display: flex; flex-direction: column; gap: 3px; }
+.public-leaderboard article strong, .milestone-league article strong { font-size: 11px; }
+.public-leaderboard article small, .milestone-league article small { color: var(--muted); font-size: 7px; }
+.public-leaderboard article > b, .milestone-league article > b { color: var(--teal); font-size: 10px; white-space: nowrap; }
+.milestone-league article { grid-template-columns: 38px 1fr auto; opacity: .55; }
+.milestone-league article.reached { opacity: 1; background: color-mix(in srgb,var(--teal) 7%,transparent); }
+.milestone-league article.reached > i { background: var(--teal); color: white; }
+.leaderboard-empty { margin: 12px 0 0; padding: 38px 20px; border: 1px dashed var(--line); color: var(--muted); font-family: Georgia,serif; font-size: 12px; line-height: 1.5; text-align: center; }
+
+/* Privacy-first account entry */
+.privacy-gate { display: grid; min-height: 100svh; grid-template-columns: minmax(0,1.15fr) minmax(300px,.85fr); overflow: hidden; background: #f8f4ea; color: #12233b; }
+.privacy-stage { width: min(790px,100%); align-self: center; justify-self: end; padding: clamp(38px,6vw,86px); }
+.privacy-stage--account { max-width: 720px; }
+.privacy-logo { display: inline-flex; align-items: stretch; margin-bottom: 28px; transform: skew(-7deg); font-weight: 950; letter-spacing: -.06em; line-height: 1; }
+.privacy-logo span, .privacy-logo strong { display: grid; height: 40px; padding: 0 10px; place-items: center; }
+.privacy-logo span { background: #12233b; color: white; font-size: 18px; }
+.privacy-logo strong { background: #e6ad49; color: #12233b; font-size: 23px; }
+.privacy-kicker { display: block; color: #6547c7; font-size: 9px; font-weight: 950; letter-spacing: .16em; }
+.privacy-stage h1 { margin: 14px 0 14px; font-size: clamp(50px,6vw,82px); font-weight: 950; letter-spacing: -.075em; line-height: .88; }
+.privacy-stage h1 em { color: #6547c7; font-style: normal; }
+.privacy-stage > p { max-width: 620px; margin: 0 0 25px; color: #68717a; font-family: Georgia,serif; font-size: 15px; line-height: 1.48; }
+.privacy-age-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; margin: 24px 0; }
+.privacy-age-grid button { position: relative; display: flex; min-height: 155px; flex-direction: column; padding: 13px; border: 1px solid rgba(18,35,59,.16); border-radius: 17px; background: white; box-shadow: 0 6px 18px rgba(18,35,59,.07); text-align: left; cursor: pointer; transition: 170ms cubic-bezier(.2,1,.3,1); }
+.privacy-age-grid button > span { color: #6547c7; font-size: 7px; font-weight: 950; letter-spacing: .08em; }
+.privacy-age-grid button > strong { margin: 16px 0 7px; font-size: 14px; letter-spacing: -.03em; line-height: 1.08; }
+.privacy-age-grid button > small { color: #68717a; font-family: Georgia,serif; font-size: 9px; line-height: 1.35; }
+.privacy-age-grid button > i { display: grid; width: 27px; height: 27px; margin-top: auto; place-items: center; border-radius: 50%; background: #eee9fa; color: #6547c7; font-style: normal; font-weight: 950; }
+.privacy-age-grid button:hover { transform: translateY(-3px) rotate(-.5deg); box-shadow: 0 10px 22px rgba(18,35,59,.11); }
+.privacy-age-grid button.active { border-color: #6547c7; background: #f0ebff; box-shadow: 0 0 0 3px rgba(101,71,199,.13),0 10px 22px rgba(18,35,59,.11); transform: translateY(-3px); }
+.privacy-age-grid button.active > i { background: #6547c7; color: white; }
+.privacy-primary { display: flex; width: min(100%,430px); min-height: 54px; align-items: center; justify-content: space-between; gap: 18px; padding: 0 18px; border: 2px solid #12233b; border-radius: 16px; background: #e6ad49; box-shadow: 4px 4px 0 #12233b; color: #12233b; font-size: 11px; font-weight: 950; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.privacy-primary:disabled { cursor: not-allowed; opacity: .4; }
+.privacy-primary span { font-size: 20px; }
+.privacy-footnote { display: block; max-width: 560px; margin-top: 15px; color: #68717a; font-family: Georgia,serif; font-size: 10px; line-height: 1.4; }
+.privacy-art { position: relative; display: grid; min-height: 100%; align-content: center; justify-items: center; overflow: hidden; background: radial-gradient(circle at 45% 40%,#8a6dea,#412994 63%,#17104d); color: white; }
+.privacy-art::before, .privacy-art::after { position: absolute; width: 350px; height: 350px; border: 54px solid rgba(255,255,255,.08); border-radius: 50%; content: ""; }
+.privacy-art::before { top: -110px; right: -110px; }
+.privacy-art::after { bottom: -150px; left: -110px; }
+.privacy-art > strong, .privacy-art > span, .privacy-art > b { position: relative; z-index: 2; font-size: clamp(58px,8vw,120px); font-weight: 950; letter-spacing: -.08em; line-height: .78; text-shadow: 7px 7px 0 rgba(18,35,59,.28); transform: rotate(-4deg); }
+.privacy-art > span { color: #e6ad49; transform: rotate(3deg); }
+.privacy-art > b { font-size: clamp(42px,6vw,82px); transform: rotate(-2deg); }
+.privacy-orbit { position: absolute; inset: 0; }
+.privacy-orbit i { position: absolute; width: 22px; height: 22px; border: 5px solid white; border-radius: 50%; animation: privacy-ball 4s ease-in-out infinite alternate; }
+.privacy-orbit i:nth-child(1) { top: 18%; left: 20%; }
+.privacy-orbit i:nth-child(2) { right: 14%; bottom: 22%; animation-delay: -1.7s; }
+.privacy-orbit i:nth-child(3) { left: 22%; bottom: 12%; animation-delay: -3s; }
+.privacy-back { margin-bottom: 20px; padding: 8px 0; border: 0; border-bottom: 1px solid currentColor; background: transparent; color: #6547c7; font-size: 9px; font-weight: 950; cursor: pointer; }
+.privacy-provider-grid { display: grid; max-width: 590px; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 13px; }
+.privacy-provider { display: grid; min-height: 66px; grid-template-columns: 38px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 9px; padding: 10px 12px; border: 1px solid rgba(18,35,59,.16); border-radius: 16px; background: white; text-align: left; cursor: pointer; }
+.privacy-provider > span { display: grid; width: 38px; height: 38px; grid-row: 1 / 3; place-items: center; border-radius: 12px; background: #12233b; color: white; font-size: 15px; font-weight: 950; }
+.privacy-provider > strong { align-self: end; font-size: 10px; }
+.privacy-provider > small { align-self: start; color: #68717a; font-size: 7px; }
+.privacy-provider:disabled { cursor: not-allowed; opacity: .55; }
+.privacy-provider--parent { width: min(100%,430px); margin-bottom: 14px; border: 2px solid #6547c7; }
+.privacy-provider--parent > span { background: #6547c7; }
+.privacy-setup-note { display: flex; max-width: 590px; flex-direction: column; gap: 5px; margin: 10px 0 15px; padding: 12px 14px; border-left: 4px solid #6547c7; border-radius: 0 12px 12px 0; background: #eee9fa; }
+.privacy-setup-note strong { color: #6547c7; font-size: 8px; letter-spacing: .09em; }
+.privacy-setup-note span { color: #3f4750; font-family: Georgia,serif; font-size: 10px; line-height: 1.4; }
+.privacy-error { color: #9d3f36 !important; font-family: Arial,sans-serif !important; font-size: 10px !important; font-weight: 850; }
+.turnstile-slot { min-height: 66px; margin: 0 0 10px; }
+.privacy-shield { position: relative; z-index: 2; display: grid; width: 115px; height: 132px; margin-bottom: 28px; place-items: center; clip-path: polygon(50% 0,100% 16%,90% 75%,50% 100%,10% 75%,0 16%); background: #e6ad49; color: #12233b; font-size: 54px; font-weight: 950; animation: shield-breathe 2.5s ease-in-out infinite; }
+.privacy-art--account > strong { font-size: clamp(55px,7vw,105px); }
+.privacy-art--account > span, .privacy-art--account > b { margin-top: 15px; font-size: clamp(28px,4vw,58px); }
+
+/* Short animated sport previews. These are an asset-ready replacement point for future video clips. */
+.sport-motion-preview { position: relative; display: grid; grid-template-columns: minmax(160px,.8fr) minmax(260px,1.2fr) auto; gap: 18px; align-items: center; margin: 25px 0; padding: 15px; overflow: hidden; border: 1px solid color-mix(in srgb,var(--sport-color) 65%,#12233b); border-radius: 18px; background: color-mix(in srgb,var(--sport-soft) 84%,white); box-shadow: 4px 5px 0 color-mix(in srgb,var(--sport-color) 20%,transparent); }
+.motion-preview-copy { display: flex; flex-direction: column; gap: 4px; }
+.motion-preview-copy span { color: var(--sport-color); font-size: 7px; font-weight: 950; letter-spacing: .12em; }
+.motion-preview-copy strong { font-size: 15px; letter-spacing: -.02em; }
+.motion-preview-copy small { color: #56606b; font-family: Georgia,serif; font-size: 9px; line-height: 1.4; }
+.motion-field { position: relative; height: 110px; overflow: hidden; border: 2px solid var(--sport-color); border-radius: 14px; background: repeating-linear-gradient(90deg,transparent 0,transparent calc(20% - 1px),color-mix(in srgb,var(--sport-color) 16%,transparent) 20%); }
+.motion-field::before { position: absolute; top: 50%; left: 0; width: 100%; border-top: 1px dashed color-mix(in srgb,var(--sport-color) 45%,transparent); content: ""; }
+.motion-player { position: absolute; z-index: 3; width: 17px; height: 17px; border: 3px solid white; border-radius: 50%; background: var(--sport-color); box-shadow: 0 2px 6px rgba(18,35,59,.22); animation: motion-run 6s ease-in-out infinite; }
+.motion-player--one { top: 16%; left: 10%; }.motion-player--two { bottom: 13%; left: 20%; animation-delay: -.9s; }.motion-player--three { top: 45%; left: 37%; animation-delay: -1.8s; }.motion-player--four { top: 18%; right: 25%; background: #e6ad49; animation-delay: -2.7s; }.motion-player--five { bottom: 17%; right: 12%; background: #c96b51; animation-delay: -3.6s; }
+.motion-object { position: absolute; z-index: 4; top: 45%; left: 42%; display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: white; color: var(--sport-color); font-size: 7px; box-shadow: 0 3px 8px rgba(18,35,59,.22); animation: motion-ball 6s cubic-bezier(.4,0,.2,1) infinite; }
+.motion-route { position: absolute; z-index: 2; top: 48%; left: 45%; width: 37%; height: 29%; border-top: 2px dashed #e6ad49; border-right: 2px dashed #e6ad49; border-radius: 0 30px 0 0; opacity: .75; }
+.motion-target { position: absolute; z-index: 3; top: 38%; right: 4%; color: #e6ad49; font-size: 24px; animation: target-pulse 800ms ease-in-out infinite alternate; }
+.motion-preview-badge { display: grid; width: 47px; height: 47px; place-items: center; border-radius: 50%; background: #12233b; color: white; transform: rotate(5deg); }
+.motion-preview-badge span { color: #e6ad49; font-size: 10px; font-weight: 950; line-height: 1; }.motion-preview-badge strong { font-size: 6px; letter-spacing: .1em; }
+
+@keyframes privacy-ball { to { transform: translate(45px,-22px) rotate(180deg) scale(1.35); } }
+@keyframes shield-breathe { 50% { transform: translateY(-8px) scale(1.03); filter: drop-shadow(0 14px 15px rgba(18,35,59,.28)); } }
+@keyframes motion-run { 50% { transform: translate(20px,-8px); } }
+@keyframes motion-ball { 0%,15% { transform: translate(0,0) rotate(0); } 55%,75% { transform: translate(95px,-25px) rotate(220deg); } 100% { transform: translate(0,0) rotate(360deg); } }
+@keyframes target-pulse { to { transform: scale(1.25) rotate(8deg); } }
 
 @keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 @keyframes soft-pulse { to { box-shadow: 0 0 0 8px color-mix(in srgb,var(--gold) 18%,transparent); } }
@@ -513,6 +624,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 @keyframes result-player-enter { from { opacity:0; transform:translateY(28px) rotate(8deg) scale(.65); } to { opacity:1; transform:translateY(0) rotate(0) scale(1); } }
 
 @media (max-width: 1050px) {
+  .privacy-age-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .privacy-age-grid button { min-height: 135px; }
   .sport-card-grid { grid-template-columns: repeat(3,1fr); }
   .dashboard-hero { grid-template-columns: 1fr; align-items: start; }
   .daily-card { max-width: 600px; }
@@ -525,6 +638,13 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 }
 
 @media (max-width: 780px) {
+  .privacy-gate { grid-template-columns: 1fr; }
+  .privacy-stage { width: 100%; justify-self: center; padding: 32px 22px 55px; }
+  .privacy-art { display: none; }
+  .sport-motion-preview { grid-template-columns: 1fr; }
+  .motion-preview-badge { position: absolute; top: 12px; right: 12px; }
+  .league-layout { grid-template-columns: 1fr; }
+  .league-player-card { min-height: 310px; }
   .welcome-screen { grid-template-columns: 1fr; }
   .welcome-board { display: none; }
   .app-header nav { order: 3; width: 100%; height: 40px; justify-content: center; }
@@ -554,6 +674,16 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outl
 }
 
 @media (max-width: 560px) {
+  .privacy-logo { margin-bottom: 22px; }
+  .privacy-stage h1 { font-size: 51px; }
+  .privacy-age-grid { display: flex; margin-inline: -22px; padding: 3px 22px 14px; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .privacy-age-grid button { min-width: 142px; min-height: 148px; scroll-snap-align: center; }
+  .privacy-provider-grid { grid-template-columns: 1fr; }
+  .motion-field { height: 100px; }
+  .public-leaderboard, .milestone-league { padding: 10px; }
+  .public-leaderboard article { grid-template-columns: 29px 45px 1fr auto; gap: 7px; }
+  .public-leaderboard article .mini-character-image { width: 42px; height: 42px; }
+  .public-leaderboard article > b, .milestone-league article > b { font-size: 8px; }
   .welcome-screen { padding: 24px 19px 55px; align-items: start; }
   .welcome-copy > .logo { margin: 15px 0 60px; }
   .welcome-copy h1 { font-size: 49px; }

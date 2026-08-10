@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BADGES,
+  arrangeChallengeOptions,
   buildPositionModule,
   buildSportIntroModule,
   EXPERIENCE_OPTIONS,
@@ -15,11 +16,13 @@ import {
   type Position,
   type Sport,
 } from "./learning-data";
+import { PrivacyGate, type AccountKind, type ConsentState } from "./privacy-gate";
 
 const PLAYER_KEY = "sports-iq-learning-profile-v1";
 const DAILY_GOAL = 100;
 
 type AgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
+type DashboardTab = "learn" | "progress" | "league" | "badges" | "profile";
 
 type Mastery = { attempts: number; correct: number; recovered: boolean };
 type SportProgress = {
@@ -45,6 +48,9 @@ type Player = {
   accentColor: string;
   ageBand: AgeBand;
   ageBandConfirmed: boolean;
+  privacyGateComplete: boolean;
+  accountKind: AccountKind;
+  consentState: ConsentState;
 };
 type SessionResult = { conceptId: string; correct: boolean; remediation: boolean };
 type ModuleSummary = {
@@ -74,6 +80,9 @@ const DEFAULT_PLAYER: Player = {
   accentColor: "#3b7f79",
   ageBand: "10-12",
   ageBandConfirmed: false,
+  privacyGateComplete: false,
+  accountKind: "guest",
+  consentState: "not-required",
 };
 
 const AGE_BANDS: Array<{ value: AgeBand; label: string; title: string; note: string; seconds: number | null }> = [
@@ -97,27 +106,27 @@ function timeLimitForAge(ageBand: AgeBand) {
 
 const AVATARS = [
   { id: "avatar-16", name: "Courage", src: "/avatars/avatar-16.png" },
-  { id: "avatar-05", name: "Dash", src: "/avatars/avatar-05.png" },
-  { id: "avatar-20", name: "Rise", src: "/avatars/avatar-20.png" },
-  { id: "avatar-01", name: "Ace", src: "/avatars/avatar-01.png" },
-  { id: "avatar-18", name: "Pulse", src: "/avatars/avatar-18.png" },
-  { id: "avatar-10", name: "Wheels", src: "/avatars/avatar-10.png" },
-  { id: "avatar-03", name: "Blaze", src: "/avatars/avatar-03.png" },
-  { id: "avatar-17", name: "Titan", src: "/avatars/avatar-17.png" },
-  { id: "avatar-08", name: "Scout", src: "/avatars/avatar-08.png" },
-  { id: "avatar-21", name: "Orbit", src: "/avatars/avatar-21.png" },
-  { id: "avatar-06", name: "Rally", src: "/avatars/avatar-06.png" },
-  { id: "avatar-22", name: "Momentum", src: "/avatars/avatar-22.png" },
-  { id: "avatar-11", name: "Remix", src: "/avatars/avatar-11.png" },
-  { id: "avatar-19", name: "Anchor", src: "/avatars/avatar-19.png" },
-  { id: "avatar-02", name: "Sky", src: "/avatars/avatar-02.png" },
-  { id: "avatar-15", name: "Stride", src: "/avatars/avatar-15.png" },
-  { id: "avatar-04", name: "Nova", src: "/avatars/avatar-04.png" },
-  { id: "avatar-12", name: "Spark", src: "/avatars/avatar-12.png" },
-  { id: "avatar-07", name: "Power", src: "/avatars/avatar-07.png" },
-  { id: "avatar-14", name: "Flash", src: "/avatars/avatar-14.png" },
-  { id: "avatar-09", name: "Jet", src: "/avatars/avatar-09.png" },
-  { id: "avatar-13", name: "Clutch", src: "/avatars/avatar-13.png" },
+  { id: "avatar-05", name: "Bravery", src: "/avatars/avatar-05.png" },
+  { id: "avatar-20", name: "Grace", src: "/avatars/avatar-20.png" },
+  { id: "avatar-01", name: "Confidence", src: "/avatars/avatar-01.png" },
+  { id: "avatar-18", name: "Joy", src: "/avatars/avatar-18.png" },
+  { id: "avatar-10", name: "Strength", src: "/avatars/avatar-10.png" },
+  { id: "avatar-03", name: "Hope", src: "/avatars/avatar-03.png" },
+  { id: "avatar-17", name: "Resilience", src: "/avatars/avatar-17.png" },
+  { id: "avatar-08", name: "Kindness", src: "/avatars/avatar-08.png" },
+  { id: "avatar-21", name: "Wisdom", src: "/avatars/avatar-21.png" },
+  { id: "avatar-06", name: "Belief", src: "/avatars/avatar-06.png" },
+  { id: "avatar-22", name: "Purpose", src: "/avatars/avatar-22.png" },
+  { id: "avatar-11", name: "Creativity", src: "/avatars/avatar-11.png" },
+  { id: "avatar-19", name: "Patience", src: "/avatars/avatar-19.png" },
+  { id: "avatar-02", name: "Peace", src: "/avatars/avatar-02.png" },
+  { id: "avatar-15", name: "Determination", src: "/avatars/avatar-15.png" },
+  { id: "avatar-04", name: "Growth", src: "/avatars/avatar-04.png" },
+  { id: "avatar-12", name: "Spirit", src: "/avatars/avatar-12.png" },
+  { id: "avatar-07", name: "Leadership", src: "/avatars/avatar-07.png" },
+  { id: "avatar-14", name: "Focus", src: "/avatars/avatar-14.png" },
+  { id: "avatar-09", name: "Grit", src: "/avatars/avatar-09.png" },
+  { id: "avatar-13", name: "Unity", src: "/avatars/avatar-13.png" },
 ] as const;
 const PLAYER_COLORS = ["#3b7f79", "#b85f45", "#59739a", "#6b64a2", "#9a6c36", "#4b7a58"];
 const PLAYER_RANKS = [
@@ -147,8 +156,8 @@ function AvatarImage({ id, className = "" }: { id: string; className?: string })
 
 function AvatarPicker({ value, onChange, compact = false }: { value: string; onChange: (id: string) => void; compact?: boolean }) {
   return (
-    <fieldset className={`mini-picker ${compact ? "mini-picker--compact" : ""}`} aria-label="Choose your mini character">
-      <legend>CHOOSE YOUR MINI CHARACTER</legend>
+    <fieldset className={`mini-picker ${compact ? "mini-picker--compact" : ""}`} aria-label="Choose your avatar strength">
+      <legend>CHOOSE YOUR AVATAR</legend>
       <div>
         {AVATARS.map((avatar) => (
           <button type="button" key={avatar.id} className={value === avatar.id ? "active" : ""} onClick={() => onChange(avatar.id)} aria-label={`Choose ${avatar.name}`} aria-pressed={value === avatar.id}>
@@ -177,10 +186,18 @@ function SportTicker() {
   );
 }
 
-function shuffle<T>(items: T[]): T[] {
-  return [...items].map((item) => ({ item, order: Math.random() }))
-    .sort((a, b) => a.order - b.order)
-    .map(({ item }) => item);
+function SportMotionPreview({ sport }: { sport: Sport }) {
+  return (
+    <div className="sport-motion-preview" style={{ "--sport-color": sport.color, "--sport-soft": sport.softColor } as React.CSSProperties} aria-label={`Six-second animated preview of ${sport.name} movement`}>
+      <div className="motion-preview-copy"><span>6-SECOND SPORT SNAPSHOT</span><strong>See how {sport.name} moves</strong><small>Players create space, support the play, and move toward the scoring target.</small></div>
+      <div className="motion-field" aria-hidden="true">
+        <i className="motion-player motion-player--one" /><i className="motion-player motion-player--two" /><i className="motion-player motion-player--three" />
+        <i className="motion-player motion-player--four" /><i className="motion-player motion-player--five" />
+        <b className="motion-object">{sport.mark}</b><em className="motion-route" /><span className="motion-target">★</span>
+      </div>
+      <div className="motion-preview-badge"><span>2D</span><strong>LIVE</strong></div>
+    </div>
+  );
 }
 
 function isoDay(date = new Date()) {
@@ -237,7 +254,7 @@ export default function Home() {
   const [player, setPlayer] = useState<Player>(DEFAULT_PLAYER);
   const [hydrated, setHydrated] = useState(false);
   const [screen, setScreen] = useState<"dashboard" | "experience" | "sport" | "module" | "results">("dashboard");
-  const [dashboardTab, setDashboardTab] = useState<"learn" | "progress" | "badges" | "profile">("learn");
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>("learn");
   const [selectedSportId, setSelectedSportId] = useState("football");
   const [pathway, setPathway] = useState<"general" | "position">("general");
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
@@ -345,13 +362,7 @@ export default function Home() {
     setScreen("sport");
   };
 
-  const prepareChallenge = useCallback((challenge: Challenge, effectiveAge = player.ageBand): Challenge => {
-    let options = challenge.options;
-    if (effectiveAge === "7-9" && !["multi", "ordering"].includes(challenge.type) && options.length > 3) {
-      const expected = Array.isArray(challenge.correct) ? challenge.correct : [challenge.correct];
-      const distractors = shuffle(options.filter((option) => !expected.includes(option))).slice(0, Math.max(0, 3 - expected.length));
-      options = [...expected, ...distractors];
-    }
+  const prepareChallenge = useCallback((challenge: Challenge, effectiveAge = player.ageBand, questionIndex = 0, sequenceKey = challenge.id): Challenge => {
     const isYoungPlayer = effectiveAge === "7-9";
     const explanation = isYoungPlayer
       ? challenge.youngExplanation ?? challenge.explanation.split(/(?<=[.!?])\s/)[0]
@@ -361,7 +372,7 @@ export default function Home() {
       prompt: isYoungPlayer ? challenge.youngPrompt ?? challenge.prompt : challenge.prompt,
       explanation,
       hint: isYoungPlayer ? challenge.youngHint ?? challenge.hint : challenge.hint,
-      options: shuffle(options),
+      options: arrangeChallengeOptions(challenge, effectiveAge, questionIndex, sequenceKey),
     };
   }, [player.ageBand]);
 
@@ -369,7 +380,7 @@ export default function Home() {
     const mastery = player.sports[module.sportId]?.mastery ?? {};
     const effectiveAge = ageOverride ?? player.ageBand;
     const prepared = module.challenges.map((challenge, index) => ({
-      challenge: prepareChallenge(challenge, effectiveAge),
+      challenge: prepareChallenge(challenge, effectiveAge, index, module.id),
       index,
       score: mastery[challenge.conceptId]?.attempts
         ? mastery[challenge.conceptId].correct / mastery[challenge.conceptId].attempts
@@ -564,12 +575,27 @@ export default function Home() {
 
   if (!hydrated) return <main className="loading-screen"><Logo /><span>Building your playbook…</span></main>;
 
+  if (!player.privacyGateComplete) {
+    return <PrivacyGate onContinue={({ ageBand, accountKind, consentState }) => {
+      setAgeChoice(ageBand);
+      setPlayer((current) => ({
+        ...current,
+        profileName: current.profileName || "Player",
+        ageBand,
+        ageBandConfirmed: true,
+        privacyGateComplete: true,
+        accountKind,
+        consentState,
+      }));
+    }} />;
+  }
+
   if (!player.profileName) {
     return (
       <main className={`welcome-screen ${player.darkMode ? "dark" : ""}`}>
         <div className="welcome-copy">
           <Logo />
-          <div className="welcome-live"><span /> 13 SPORTS · ONE PLAYBOOK · YOUR PACE</div>
+          <div className="welcome-live"><span /> {SPORTS.length} SPORTS · ONE PLAYBOOK · YOUR PACE</div>
           <span className="eyebrow"><i /> YOUR SPORTS IQ STARTS HERE</span>
           <h1>LEARN THE GAME.<br /><em>SEE IT DIFFERENTLY.</em></h1>
           <p>Pick a sport. Make the call. Learn why it works. Build real game knowledge through short, interactive challenges.</p>
@@ -732,7 +758,8 @@ export default function Home() {
             <div><span>NEEDS PRACTICE</span>{summary.practice.length ? summary.practice.map((concept) => <p key={concept}>• {concept.replaceAll("-", " ")}</p>) : <p>Nothing right now—great read.</p>}</div>
           </div>
           {summary.newBadges.length > 0 && <div className="badge-unlock"><span>BADGE UNLOCKED</span><strong>{BADGES.find((badge) => badge.id === summary.newBadges[0])?.name}</strong></div>}
-          <button className="primary-button" onClick={() => setScreen("sport")}>Continue my path <span>→</span></button>
+          <button className="primary-button" onClick={() => setScreen("sport")}>Continue {summary.module.position ?? selectedSport.name} path <span>→</span></button>
+          <button className="text-button" onClick={() => setScreen("dashboard")}>Choose another sport</button>
         </section>
       </main>
     );
@@ -753,6 +780,7 @@ export default function Home() {
         <section className="sport-hero" style={{ "--sport-color": selectedSport.color, "--sport-soft": selectedSport.softColor } as React.CSSProperties}>
           <button className="back-link" onClick={navigateHome}>← All sports</button>
           <div className="sport-title-row"><div className="sport-mark sport-mark--xl">{selectedSport.mark}</div><div><span>{sportProgress.variant ?? selectedSport.variants[0]} PATH</span><h1>{selectedSport.name}</h1><p>{selectedSport.pathNote ?? (sportProgress.experience === "new" ? "Start with the fundamentals, then unlock position-specific reads." : "Your placement opens Rookie and position-specific learning.")}</p></div></div>
+          <SportMotionPreview sport={selectedSport} />
           <div className="sport-summary"><div><strong>{progressPercent}%</strong><span>SPORT PROGRESS</span></div><div><strong>{sportProgress.xp}</strong><span>XP EARNED</span></div><div><strong>{LEVELS[Math.min(5, Math.floor(sportProgress.completedModules.length / 3))]}</strong><span>CURRENT LEVEL</span></div></div>
         </section>
         <section className="path-content">
@@ -796,16 +824,17 @@ export default function Home() {
         const started = SPORTS.find((sport) => player.sports[sport.id]?.experience) ?? SPORTS[0]; chooseSport(started);
       }} />}
       {dashboardTab === "progress" && <ProgressDashboard player={player} strongest={strongest} weakest={weakest} onChooseSport={chooseSport} />}
+      {dashboardTab === "league" && <LeaderboardDashboard player={player} />}
       {dashboardTab === "badges" && <BadgesDashboard player={player} />}
       {dashboardTab === "profile" && <ProfileDashboard player={player} onUpdateIdentity={(updates) => setPlayer((current) => ({ ...current, ...updates, ageBandConfirmed: true }))} onReset={() => {
-        if (window.confirm("Reset all Sports IQ progress saved on this device? This cannot be undone.")) setPlayer({ ...DEFAULT_PLAYER, profileName: player.profileName, darkMode: player.darkMode, soundOn: player.soundOn, avatarMark: player.avatarMark, accentColor: player.accentColor, ageBand: player.ageBand, ageBandConfirmed: true });
+        if (window.confirm("Reset all Sports IQ progress saved on this device? This cannot be undone.")) setPlayer({ ...DEFAULT_PLAYER, profileName: player.profileName, darkMode: player.darkMode, soundOn: player.soundOn, avatarMark: player.avatarMark, accentColor: player.accentColor, ageBand: player.ageBand, ageBandConfirmed: true, privacyGateComplete: true, accountKind: player.accountKind, consentState: player.consentState });
       }} />}
     </main>
   );
 }
 
-function AppHeader({ player, active, onNavigate, onHome, onToggleTheme, onToggleSound }: { player: Player; active: "learn" | "progress" | "badges" | "profile"; onNavigate: (tab: "learn" | "progress" | "badges" | "profile") => void; onHome: () => void; onToggleTheme: () => void; onToggleSound: () => void }) {
-  return <header className="app-header"><button className="brand-button" onClick={onHome}><Logo compact /></button><nav aria-label="Main navigation"><button className={active === "learn" ? "active" : ""} onClick={() => onNavigate("learn")}>Learn</button><button className={active === "progress" ? "active" : ""} onClick={() => onNavigate("progress")}>Progress</button><button className={active === "badges" ? "active" : ""} onClick={() => onNavigate("badges")}>Badges</button></nav><div className="header-stats"><button className="streak-pill" onClick={() => onNavigate("progress")}><span>◆</span><strong>{player.streak}</strong><small>DAY STREAK</small></button><button className="xp-pill" onClick={() => onNavigate("progress")}><span>XP</span><strong>{player.totalXp.toLocaleString()}</strong></button><button className={`sound-button ${player.soundOn ? "active" : ""}`} onClick={onToggleSound} aria-label={`${player.soundOn ? "Turn off" : "Turn on"} answer feedback sounds`} title="Controls short correct and incorrect answer sounds"><span>SFX</span><strong>{player.soundOn ? "ON" : "OFF"}</strong></button><button className="theme-button" onClick={onToggleTheme} aria-label="Toggle dark mode">{player.darkMode ? "☀" : "◐"}</button><button className="avatar-button" style={{ "--player-color": player.accentColor } as React.CSSProperties} onClick={() => onNavigate("profile")} aria-label={`Open ${player.profileName}'s profile`}><AvatarImage id={player.avatarMark} /></button></div></header>;
+function AppHeader({ player, active, onNavigate, onHome, onToggleTheme, onToggleSound }: { player: Player; active: DashboardTab; onNavigate: (tab: DashboardTab) => void; onHome: () => void; onToggleTheme: () => void; onToggleSound: () => void }) {
+  return <header className="app-header"><button className="brand-button" onClick={onHome}><Logo compact /></button><nav aria-label="Main navigation"><button className={active === "learn" ? "active" : ""} onClick={() => onNavigate("learn")}>Learn</button><button className={active === "progress" ? "active" : ""} onClick={() => onNavigate("progress")}>Progress</button><button className={active === "league" ? "active" : ""} onClick={() => onNavigate("league")}>League</button><button className={active === "badges" ? "active" : ""} onClick={() => onNavigate("badges")}>Badges</button></nav><div className="header-stats"><button className="streak-pill" onClick={() => onNavigate("progress")}><span>◆</span><strong>{player.streak}</strong><small>DAY STREAK</small></button><button className="xp-pill" onClick={() => onNavigate("league")}><span>XP</span><strong>{player.totalXp.toLocaleString()}</strong></button><button className={`sound-button ${player.soundOn ? "active" : ""}`} onClick={onToggleSound} aria-label={`${player.soundOn ? "Turn off" : "Turn on"} answer feedback sounds`} title="Controls short correct and incorrect answer sounds"><span>SFX</span><strong>{player.soundOn ? "ON" : "OFF"}</strong></button><button className="theme-button" onClick={onToggleTheme} aria-label="Toggle dark mode">{player.darkMode ? "☀" : "◐"}</button><button className="avatar-button" style={{ "--player-color": player.accentColor } as React.CSSProperties} onClick={() => onNavigate("profile")} aria-label={`Open ${player.profileName}'s profile`}><AvatarImage id={player.avatarMark} /></button></div></header>;
 }
 
 function DashboardLearn({ player, onChooseSport, onContinue }: { player: Player; onChooseSport: (sport: Sport) => void; onContinue: () => void }) {
@@ -834,15 +863,44 @@ function ProgressDashboard({ player, strongest, weakest, onChooseSport }: { play
   return <section className="dashboard-page"><div className="section-heading"><span>YOUR SEASON</span><h1>Progress that means something.</h1><p>Mastery reflects what you understand—not how fast you clicked through.</p></div><div className="league-ladder"><div><span>YOUR SAFE LEAGUE</span><h2>{rank.name}</h2><p>Compete against milestones—not strangers. No public names, messages, or rankings.</p></div><div className="rank-track">{PLAYER_RANKS.map((item) => <div key={item.name} className={player.totalXp >= item.xp ? "reached" : ""}><i>{item.mark}</i><span>{item.name}</span><small>{item.xp} XP</small></div>)}</div>{nextRank && <strong>{nextRank.xp - player.totalXp} XP TO {nextRank.name.toUpperCase()}</strong>}</div><div className="big-stat-grid"><div><span>TOTAL XP</span><strong>{player.totalXp.toLocaleString()}</strong><small>Across {started.length} sports</small></div><div><span>MODULES</span><strong>{modules}</strong><small>Completed sessions</small></div><div><span>ACCURACY</span><strong>{accuracy}%</strong><small>All-time answers</small></div><div><span>STREAK</span><strong>{player.streak}</strong><small>Consecutive days</small></div></div><div className="progress-columns"><div className="progress-panel"><span>SPORTS IN PROGRESS</span>{started.length ? started.map((sport) => { const progress = player.sports[sport.id]; return <button key={sport.id} onClick={() => onChooseSport(sport)}><div className="sport-mark" style={{ "--sport-color": sport.color, "--sport-soft": sport.softColor } as React.CSSProperties}>{sport.mark}</div><div><strong>{sport.name}</strong><small>{progress.xp} XP · {progress.completedModules.length} complete</small></div><span>→</span></button>; }) : <p>Choose a sport to begin your first path.</p>}</div><div className="mastery-panel"><div><span>STRONGEST CONCEPTS</span>{strongest.length ? strongest.map((item) => <p key={item.conceptId}><b>✓</b>{item.conceptId.replaceAll("-", " ")}<small>{masteryLabel(item.mastery)}</small></p>) : <p>Complete a module to reveal strengths.</p>}</div><div><span>FOCUS NEXT</span>{weakest.length ? weakest.map((item) => <p key={item.conceptId}><b>↗</b>{item.conceptId.replaceAll("-", " ")}<small>{masteryLabel(item.mastery)}</small></p>) : <p>No weak concepts recorded yet.</p>}</div></div></div>{player.recentActivity.length > 0 && <div className="recent-panel"><span>RECENT ACTIVITY</span>{player.recentActivity.map((item, index) => <div key={`${item.title}-${index}`}><strong>{item.title}</strong><p>{item.detail}</p><small>{item.date}</small></div>)}</div>}</section>;
 }
 
+type LeaderboardEntry = { rank: number; alias: string; avatarId: string; xp: number };
+
+function LeaderboardDashboard({ player }: { player: Player }) {
+  const isChild = player.accountKind === "child" || player.ageBand === "7-9" || player.ageBand === "10-12";
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "setup" | "error">(isChild ? "ready" : "loading");
+  const nextRank = PLAYER_RANKS.find((rank) => rank.xp > player.totalXp);
+
+  useEffect(() => {
+    if (isChild) return;
+    fetch("/api/leaderboard")
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((result: { entries?: LeaderboardEntry[]; status?: "ready" | "setup" }) => {
+        setEntries(result.entries ?? []);
+        setStatus(result.status ?? "ready");
+      })
+      .catch(() => setStatus("error"));
+  }, [isChild]);
+
+  return <section className="dashboard-page league-page">
+    <div className="section-heading"><span>XP LEAGUE</span><h1>Climb by learning.</h1><p>XP rewards completed lessons and better reads. There are no messages, follower counts, or pay-to-win boosts.</p></div>
+    <div className="league-safety-banner"><span>◆</span><div><strong>{isChild ? "PRIVATE YOUTH LEAGUE" : "ALIAS-ONLY PUBLIC LEAGUE"}</strong><p>{isChild ? "Players under 13 never appear on the public board. Your challenge is to beat your next personal milestone." : "Only opted-in players age 13+ can appear. The board shows an alias, avatar, and XP—never an email, age, or legal name."}</p></div></div>
+    <div className="league-layout">
+      <aside className="league-player-card" style={{ "--player-color": player.accentColor } as React.CSSProperties}><span>YOUR SCORE</span><AvatarImage id={player.avatarMark} /><strong>{player.totalXp.toLocaleString()}</strong><small>TOTAL XP</small><div><b style={{ width: `${nextRank ? Math.min(100, player.totalXp / nextRank.xp * 100) : 100}%` }} /></div><p>{nextRank ? `${nextRank.xp - player.totalXp} XP to ${nextRank.name}` : "Top milestone reached"}</p></aside>
+      {isChild ? <div className="milestone-league"><span>YOUR PRIVATE CLIMB</span>{PLAYER_RANKS.map((rank, index) => <article key={rank.name} className={player.totalXp >= rank.xp ? "reached" : ""}><i>{player.totalXp >= rank.xp ? "✓" : index + 1}</i><div><strong>{rank.name}</strong><small>{rank.xp.toLocaleString()} XP</small></div><b>{player.totalXp >= rank.xp ? "CLEARED" : `${Math.max(0, rank.xp - player.totalXp)} TO GO`}</b></article>)}</div>
+        : <div className="public-leaderboard"><div className="leaderboard-title"><span>TOP PLAYERS</span><small>Updates every few minutes</small></div>{status === "loading" && <p className="leaderboard-empty">Loading the league…</p>}{status === "setup" && <p className="leaderboard-empty">The public league is ready for the first opted-in account. Guest XP remains private.</p>}{status === "error" && <p className="leaderboard-empty">The league could not load right now. Your XP is still safe.</p>}{status === "ready" && entries.length === 0 && <p className="leaderboard-empty">No players have opted in yet. Be the first when secure accounts go live.</p>}{entries.map((entry) => <article key={`${entry.rank}-${entry.alias}`}><i>{entry.rank <= 3 ? ["★", "◆", "●"][entry.rank - 1] : entry.rank}</i><AvatarImage id={entry.avatarId} /><div><strong>{entry.alias}</strong><small>SPORTS IQ PLAYER</small></div><b>{entry.xp.toLocaleString()} XP</b></article>)}</div>}
+    </div>
+  </section>;
+}
+
 function BadgesDashboard({ player }: { player: Player }) {
   return <section className="dashboard-page"><div className="section-heading"><span>TROPHY ROOM</span><h1>Earned through real progress.</h1><p>Badges and player titles unlock as your sports knowledge grows.</p></div><div className="title-locker"><span>PLAYER TITLES</span><div>{PLAYER_RANKS.map((rank) => { const unlocked = player.totalXp >= rank.xp; return <article key={rank.name} className={unlocked ? "unlocked" : "locked"}><i>{unlocked ? rank.mark : "?"}</i><div><small>{unlocked ? "UNLOCKED" : `${rank.xp} XP`}</small><strong>{rank.name}</strong></div></article>; })}</div></div><div className="badge-grid">{BADGES.map((badge) => { const earned = player.badges.includes(badge.id); return <article className={earned ? "earned" : "locked"} key={badge.id}><div>{earned ? badge.mark : "?"}</div><span>{earned ? "EARNED" : "LOCKED"}</span><h2>{badge.name}</h2><p>{badge.description}</p></article>; })}</div></section>;
 }
 
-function ProfileDashboard({ player, onUpdateIdentity, onReset }: { player: Player; onUpdateIdentity: (updates: Pick<Player, "profileName" | "avatarMark" | "accentColor" | "ageBand">) => void; onReset: () => void }) {
+function ProfileDashboard({ player, onUpdateIdentity, onReset }: { player: Player; onUpdateIdentity: (updates: Pick<Player, "profileName" | "avatarMark" | "accentColor">) => void; onReset: () => void }) {
   const [name, setName] = useState(player.profileName);
   const [avatarMark, setAvatarMark] = useState(player.avatarMark);
   const [accentColor, setAccentColor] = useState(player.accentColor);
-  const [ageBand, setAgeBand] = useState<AgeBand>(player.ageBand);
   const rank = playerRank(player.totalXp);
-  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Make the playbook yours. Your age path changes pacing and presentation—not what sports you can explore.</p></div><div className="profile-layout"><div className="profile-card" style={{ "--player-color": accentColor } as React.CSSProperties}><span className="player-card-rank">{rank.name}</span><div className="profile-avatar"><AvatarImage id={avatarMark} /></div><h2>{name || player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p><div className="player-card-stripe"><span>{ageBand}</span><span>{rank.mark}</span><span>SPORTS IQ</span></div></div><form onSubmit={(event) => { event.preventDefault(); if (name.trim()) onUpdateIdentity({ profileName: name.trim(), avatarMark, accentColor, ageBand }); }}><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /><span>AGE PATH</span><div className="profile-age-options">{AGE_BANDS.map((band) => <button type="button" key={band.value} className={ageBand === band.value ? "active" : ""} onClick={() => setAgeBand(band.value)} aria-pressed={ageBand === band.value}>{band.value}</button>)}</div><AvatarPicker value={avatarMark} onChange={setAvatarMark} /><span>TEAM COLOR</span><div className="color-options">{PLAYER_COLORS.map((color) => <button type="button" key={color} className={accentColor === color ? "active" : ""} style={{ background: color }} onClick={() => setAccentColor(color)} aria-label={`Choose team color ${color}`} aria-pressed={accentColor === color} />)}</div><button className="primary-button primary-button--small" type="submit">Save player card <span>→</span></button><hr /><span>DEVICE DATA</span><p>Your experience choices, mastery, XP, badges, and streak are stored in this browser for the current preview.</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
+  return <section className="dashboard-page"><div className="section-heading"><span>PLAYER PROFILE</span><h1>Your Sports IQ identity.</h1><p>Make the playbook yours. Your age path changes pacing and presentation—not what sports you can explore.</p></div><div className="profile-layout"><div className="profile-card" style={{ "--player-color": accentColor } as React.CSSProperties}><span className="player-card-rank">{rank.name}</span><div className="profile-avatar"><AvatarImage id={avatarMark} /></div><h2>{name || player.profileName}</h2><p>{player.totalXp.toLocaleString()} XP · {player.badges.length} badges · {Object.keys(player.sports).length} sports</p><div className="player-card-stripe"><span>{player.ageBand}</span><span>{rank.mark}</span><span>SPORTS IQ</span></div></div><form onSubmit={(event) => { event.preventDefault(); if (name.trim()) onUpdateIdentity({ profileName: name.trim(), avatarMark, accentColor }); }}><label htmlFor="profile-name">DISPLAY NAME</label><input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} /><span>AGE PATH</span><div className="profile-age-locked"><strong>{player.ageBand}</strong><span>Set during age check · locked to protect the learning path</span></div><AvatarPicker value={avatarMark} onChange={setAvatarMark} /><span>TEAM COLOR</span><div className="color-options">{PLAYER_COLORS.map((color) => <button type="button" key={color} className={accentColor === color ? "active" : ""} style={{ background: color }} onClick={() => setAccentColor(color)} aria-label={`Choose team color ${color}`} aria-pressed={accentColor === color} />)}</div><button className="primary-button primary-button--small" type="submit">Save player card <span>→</span></button><hr /><span>ACCOUNT & PRIVACY</span><p>{player.accountKind === "child" ? "Child path · private device play. No child email or legal name is stored online." : player.accountKind === "guest" ? "Guest path · progress is currently saved on this device." : "Signed-in path · progress can sync across devices."}</p><button className="danger-button" type="button" onClick={onReset}>Reset all progress</button></form></div></section>;
 }
