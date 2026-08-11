@@ -7,6 +7,7 @@ type RuntimeEnv = Record<string, string | undefined>;
 export async function GET() {
   const runtime = env as unknown as RuntimeEnv;
   const turnstileSiteKey = runtime.TURNSTILE_SITE_KEY;
+  const turnstileReady = Boolean(turnstileSiteKey && runtime.TURNSTILE_SECRET_KEY);
   const providerUrls = {
     apple: runtime.SPORTS_IQ_AUTH_APPLE_URL,
     google: runtime.SPORTS_IQ_AUTH_GOOGLE_URL,
@@ -16,14 +17,14 @@ export async function GET() {
 
   return Response.json({
     providers: Object.fromEntries(
-      Object.entries(providerUrls).map(([provider, url]) => [provider, { ready: Boolean(url && turnstileSiteKey), url: url ?? null }]),
+      Object.entries(providerUrls).map(([provider, url]) => [provider, { ready: Boolean(url && turnstileReady), url: url ?? null }]),
     ),
     parentConsent: {
-      ready: Boolean(runtime.SPORTS_IQ_PARENT_CONSENT_URL && turnstileSiteKey),
+      ready: Boolean(runtime.SPORTS_IQ_PARENT_CONSENT_URL && turnstileReady),
       url: runtime.SPORTS_IQ_PARENT_CONSENT_URL ?? null,
     },
-    turnstileSiteKey: turnstileSiteKey ?? null,
-    mode: turnstileSiteKey ? "configured" : "setup",
+    turnstileSiteKey: turnstileReady ? turnstileSiteKey : null,
+    mode: turnstileReady ? "configured" : "setup",
   }, {
     headers: { "Cache-Control": "no-store" },
   });

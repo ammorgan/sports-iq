@@ -1,5 +1,3 @@
-export type ExperienceLevel = "new" | "basics" | "casual" | "competitive" | "expert";
-
 export type ChallengeType = "choice" | "truefalse" | "scenario" | "ordering" | "multi" | "hotspot";
 
 export type Challenge = {
@@ -96,9 +94,9 @@ export function arrangeChallengeOptions(
   let options = [...new Set([...source, ...expected])];
   const salt = stableHash(`${sequenceKey}:${ageBand}`);
 
-  if (ageBand === "7-9" && !["multi", "ordering"].includes(challenge.type) && options.length > 3) {
+  if (ageBand === "7-9" && !["multi", "ordering"].includes(challenge.type) && options.length > 2) {
     const distractors = rotate(options.filter((option) => !expected.includes(option)), salt);
-    options = [...expected, ...distractors.slice(0, Math.max(0, 3 - expected.length))];
+    options = [...expected, ...distractors.slice(0, Math.max(0, 2 - expected.length))];
   }
 
   if (challenge.type === "ordering") {
@@ -118,14 +116,6 @@ export function arrangeChallengeOptions(
   return distractors;
 }
 
-export const EXPERIENCE_OPTIONS: Array<{ value: ExperienceLevel; title: string; note: string }> = [
-  { value: "new", title: "I’m completely new", note: "Start with an interactive Fundamentals path." },
-  { value: "basics", title: "I know the basics", note: "Skip the intro and begin at Rookie." },
-  { value: "casual", title: "I’ve played casually", note: "Start with game situations and core reads." },
-  { value: "competitive", title: "I’ve played competitively", note: "Jump into Playmaker-level decisions." },
-  { value: "expert", title: "I’m very experienced / coach-level", note: "Open advanced film-room challenges." },
-];
-
 export const LEVELS = ["Rookie", "Starter", "Playmaker", "All-Star", "Elite", "Pro"];
 
 export const SPORTS: Sport[] = [
@@ -136,8 +126,8 @@ export const SPORTS: Sport[] = [
     mark: "TF",
     color: "#2f6f68",
     softColor: "#dcebe6",
-    variants: ["Women’s Tackle (WNFC)", "Men’s Tackle", "Youth Tackle"],
-    pathNote: "Eleven-on-eleven tackle football with full offensive, defensive, and special-teams position rooms—including the women’s tackle game represented by the WNFC.",
+    variants: ["Women’s Tackle", "Men’s Tackle", "Youth Tackle"],
+    pathNote: "Eleven-on-eleven tackle football with offensive, defensive, and special-teams position rooms.",
     positions: [
       { name: "Quarterback", group: "Offense", focus: "read the defense and distribute the ball" },
       { name: "Running Back", group: "Offense", focus: "press the run track and identify the open crease" },
@@ -1279,10 +1269,15 @@ function positionRead(sport: Sport, position: Position) {
   return POSITION_READS[sport.id]?.[position.name] ?? `the action developing around the ${position.group.toLowerCase()}`;
 }
 
+export function positionModuleId(sportId: string, positionName: string) {
+  if (sportId === "football" && positionName === "Center") return "fb-position-center-foundations";
+  return `${sportId}-position-${positionName.toLowerCase().replaceAll(" ", "-")}-intro`;
+}
+
 export function buildPositionModule(sport: Sport, position: Position): LearningModule {
   if (sport.id === "football" && position.name === "Center") {
     return {
-      id: "fb-position-center-foundations",
+      id: positionModuleId(sport.id, position.name),
       sportId: sport.id,
       level: 1,
       pathway: "position",
@@ -1309,7 +1304,7 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
     "Wait for another player to take control of the assignment",
   ])].slice(0, 4);
   return {
-    id: `${sport.id}-position-${position.name.toLowerCase().replaceAll(" ", "-")}-intro`,
+    id: positionModuleId(sport.id, position.name),
     sportId: sport.id,
     level: 1,
     pathway: "position",
@@ -1391,9 +1386,13 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
   };
 }
 
+export function sportIntroModuleId(sportId: string) {
+  return `${sportId}-fundamentals-intro`;
+}
+
 export function buildSportIntroModule(sport: Sport): LearningModule {
   return {
-    id: `${sport.id}-fundamentals-intro`,
+    id: sportIntroModuleId(sport.id),
     sportId: sport.id,
     level: 0,
     pathway: "general",
@@ -1406,6 +1405,52 @@ export function buildSportIntroModule(sport: Sport): LearningModule {
       conceptId: `${sport.id}-${question.id === "format" ? "game-format" : question.id === "score" ? "scoring" : question.id === "field" ? "playing-area" : "team-size"}`,
     })),
   };
+}
+
+export function sportPositionsIntroModuleId(sportId: string) {
+  return `${sportId}-positions-intro`;
+}
+
+export function buildPositionsIntroModule(sport: Sport): LearningModule {
+  const groups = [...new Set(sport.positions.map((position) => position.group))];
+  const challenges = groups.slice(0, 5).map((group, index) => {
+    const groupPositions = sport.positions.filter((position) => position.group === group);
+    const featured = groupPositions[index % groupPositions.length];
+    const distractors = sport.positions.filter((position) => position.group !== group).slice(index, index + 3);
+    return {
+      id: `${sport.id}-positions-${group.toLowerCase().replaceAll(" ", "-")}`,
+      conceptId: `${sport.id}-position-groups`,
+      type: "choice" as const,
+      label: "Meet the team",
+      prompt: `Which ${sport.name} position belongs to the ${group} group?`,
+      youngPrompt: `Tap a ${group} position.`,
+      options: [featured.name, ...distractors.map((position) => position.name)],
+      correct: featured.name,
+      explanation: `${featured.name} belongs to ${group}. Its job includes helping the team ${featured.focus}.`,
+      youngExplanation: `${featured.name} is in ${group}. It helps the team ${featured.focus}.`,
+      hint: `Look for the role that shares the ${group} team's job.`,
+      youngHint: `Look for ${featured.name}.`,
+      xp: 10,
+    };
+  });
+
+  return {
+    id: sportPositionsIntroModuleId(sport.id),
+    sportId: sport.id,
+    level: 0,
+    pathway: "general",
+    title: sport.positions.length ? "Meet the Positions" : "Meet the Events",
+    description: sport.positions.length
+      ? "Learn who is on the playing area and what each group helps the team do."
+      : "Learn the different ways athletes compete in this sport.",
+    estimatedMinutes: 4,
+    challenges,
+  };
+}
+
+export function generalModulesForSport(sport: Sport): LearningModule[] {
+  const fundamentals = sport.id === "football" ? FOOTBALL_MODULES : [buildSportIntroModule(sport)];
+  return sport.positions.length ? [...fundamentals, buildPositionsIntroModule(sport)] : fundamentals;
 }
 
 export const BADGES = [

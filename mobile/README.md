@@ -1,4 +1,4 @@
-# Sports IQ Mobile
+# RepQuest Mobile
 
 Expo/React Native companion app for iOS, Android, phones, and tablets. It shares the web app's sports and quiz data from `../app/learning-data.ts`, so rules corrections stay aligned across platforms.
 

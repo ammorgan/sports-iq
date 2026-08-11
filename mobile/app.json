@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Sports IQ",
+    "name": "RepQuest",
     "slug": "sports-iq",
     "version": "0.1.0",
     "orientation": "default",
@@ -13,7 +13,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ammorgan.sportsiq"
+      "bundleIdentifier": "com.ammorgan.sportsiq",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.ammorgan.sportsiq",
@@ -36,7 +39,8 @@
           "enableBackgroundRecording": false
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-video"
     ]
   }
 }

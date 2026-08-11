@@ -1,36 +1,29 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import "./globals.css";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "sports-iq-arena.mandiemorgan19.chatgpt.site";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const baseUrl = new URL(`${protocol}://${host}`);
-  const socialImage = new URL("/og.png", baseUrl).toString();
+const siteUrl = new URL("https://sports-iq-arena.mandiemorgan19.chatgpt.site");
 
-  return {
-    metadataBase: baseUrl,
-    title: "Sports IQ — Learn the Game. See It Differently.",
-    description: "Interactive sports learning paths that build rules, reads, responsibilities, strategy, and real game IQ.",
-    icons: {
-      icon: "/favicon.svg",
-      shortcut: "/favicon.svg",
-    },
-    openGraph: {
-      title: "Sports IQ",
-      description: "Learn the game. See it differently.",
-      type: "website",
-      images: [{ url: socialImage, width: 1536, height: 1024, alt: "Sports IQ learning game" }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: "Sports IQ",
-      description: "Learn the game. See it differently.",
-      images: [socialImage],
-    },
-  };
-}
+export const metadata: Metadata = {
+  metadataBase: siteUrl,
+  title: "RepQuest — Learn the Game. Build Your IQ.",
+  description: "Interactive sports learning paths that build rules, reads, responsibilities, strategy, and real game IQ.",
+  icons: {
+    icon: "/repquest-logo.png",
+    shortcut: "/repquest-logo.png",
+  },
+  openGraph: {
+    title: "RepQuest",
+    description: "Learn the game. See it differently.",
+    type: "website",
+    images: [{ url: "/repquest-logo.png", width: 1254, height: 1254, alt: "RepQuest sports learning game logo" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RepQuest",
+    description: "Learn the game. See it differently.",
+    images: ["/repquest-logo.png"],
+  },
+};
 
 export default function RootLayout({
   children,

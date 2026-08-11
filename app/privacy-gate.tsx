@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 export type PrivacyAgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
@@ -17,6 +18,7 @@ type AccountConfig = {
 
 type TurnstileApi = {
   render(container: HTMLElement, options: { sitekey: string; callback: (token: string) => void; "expired-callback": () => void; theme: "light" }): string;
+  remove(widgetId: string): void;
   reset(widgetId?: string): void;
 };
 
@@ -29,7 +31,7 @@ const AGE_CHOICES: Array<{ value: PrivacyAgeBand; label: string; title: string; 
   { value: "10-12", label: "AGES 10–12", title: "Build the Basics", note: "Guided lessons · 60 seconds" },
   { value: "13-15", label: "AGES 13–15", title: "Read the Game", note: "Game scenarios · 45 seconds" },
   { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Deeper tactics · 35 seconds" },
-  { value: "18+", label: "AGES 18+", title: "Full Sports IQ", note: "Complete detail · 30 seconds" },
+  { value: "18+", label: "AGES 18+", title: "Full Game IQ", note: "Complete detail · 30 seconds" },
 ];
 
 const PROVIDERS: Array<{ id: Provider; label: string; mark: string }> = [
@@ -57,19 +59,24 @@ export function PrivacyGate({ onContinue }: {
   const [step, setStep] = useState<"age" | "account">("age");
   const [ageBand, setAgeBand] = useState<PrivacyAgeBand | null>(null);
   const [config, setConfig] = useState<AccountConfig>(EMPTY_CONFIG);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [humanToken, setHumanToken] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const turnstileHost = useRef<HTMLDivElement | null>(null);
-  const widgetId = useRef<string>();
+  const widgetId = useRef<string | undefined>(undefined);
   const isChild = ageBand === "7-9" || ageBand === "10-12";
 
   useEffect(() => {
+    if (step !== "account" || configLoaded) return;
+    let cancelled = false;
     fetch("/api/account/config", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((next: AccountConfig) => setConfig(next))
-      .catch(() => setConfig(EMPTY_CONFIG));
-  }, []);
+      .then((next: AccountConfig) => { if (!cancelled) setConfig(next); })
+      .catch(() => { if (!cancelled) setConfig(EMPTY_CONFIG); })
+      .finally(() => { if (!cancelled) setConfigLoaded(true); });
+    return () => { cancelled = true; };
+  }, [configLoaded, step]);
 
   useEffect(() => {
     if (step !== "account" || !config.turnstileSiteKey || !turnstileHost.current || widgetId.current) return;
@@ -119,11 +126,19 @@ export function PrivacyGate({ onContinue }: {
     }
   };
 
+  const returnToAge = () => {
+    if (widgetId.current) window.turnstile?.remove(widgetId.current);
+    widgetId.current = undefined;
+    setHumanToken("");
+    setMessage("");
+    setStep("age");
+  };
+
   if (step === "age") {
     return (
       <main className="privacy-gate">
         <section className="privacy-stage">
-          <div className="privacy-logo"><span>SPORTS</span><strong>IQ</strong></div>
+          <div className="privacy-logo"><span>REP</span><strong>QUEST</strong></div>
           <span className="privacy-kicker">FIRST, SET THE RIGHT PLAYBOOK</span>
           <h1>How old is the<br /><em>player?</em></h1>
           <p>An adult or the player should choose the real age range. We save only the range—not a birthday.</p>
@@ -132,6 +147,7 @@ export function PrivacyGate({ onContinue }: {
           </div>
           <button className="privacy-primary" disabled={!ageBand} onClick={() => setStep("account")}>Continue <span>→</span></button>
           <small className="privacy-footnote">Age controls reading level, visuals, and timer. Sport experience controls difficulty.</small>
+          <nav className="privacy-legal-links" aria-label="Legal"><Link href="/privacy">Privacy Notice</Link><Link href="/terms">Terms of Use</Link></nav>
         </section>
         <aside className="privacy-art" aria-hidden="true"><div className="privacy-orbit"><i /><i /><i /></div><strong>LEARN</strong><span>PLAY</span><b>GROW</b></aside>
       </main>
@@ -141,12 +157,12 @@ export function PrivacyGate({ onContinue }: {
   return (
     <main className="privacy-gate">
       <section className="privacy-stage privacy-stage--account">
-        <button className="privacy-back" onClick={() => { setStep("age"); setMessage(""); }}>← Change age</button>
-        <div className="privacy-logo"><span>SPORTS</span><strong>IQ</strong></div>
+        <button className="privacy-back" onClick={returnToAge}>← Change age</button>
+        <div className="privacy-logo"><span>REP</span><strong>QUEST</strong></div>
         {isChild ? <>
           <span className="privacy-kicker">A GROWN-UP OWNS THIS ACCOUNT</span>
           <h1>Parent<br /><em>handoff.</em></h1>
-          <p>For players under 13, Sports IQ does not ask for the child’s email or name. A parent can create and manage the account, consent, review data, or delete it.</p>
+          <p>For players under 13, RepQuest does not ask for the child’s email or name. A parent can create and manage the account, consent, review data, or delete it.</p>
           {config.parentConsent.ready ? <>
             <div ref={turnstileHost} className="turnstile-slot" aria-label="Human verification" />
             <button className="privacy-provider privacy-provider--parent" disabled={!humanToken || busy} onClick={() => openVerified(config.parentConsent.url)}><span>★</span><strong>Parent setup & consent</strong><small>Adult information only</small></button>
@@ -169,6 +185,7 @@ export function PrivacyGate({ onContinue }: {
           <button className="privacy-primary" onClick={() => onContinue({ ageBand: ageBand as PrivacyAgeBand, accountKind: "guest", consentState: "not-required" })}>Continue without an account <span>→</span></button>
           <small className="privacy-footnote">Guest progress stays on this device. You can connect an account later.</small>
         </>}
+        <nav className="privacy-legal-links" aria-label="Legal"><Link href="/privacy">Privacy Notice</Link><Link href="/terms">Terms of Use</Link></nav>
       </section>
       <aside className="privacy-art privacy-art--account" aria-hidden="true"><div className="privacy-shield">✓</div><strong>SAFE</strong><span>YOUR PACE</span><b>YOUR PLAYBOOK</b></aside>
     </main>

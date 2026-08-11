@@ -3,7 +3,7 @@ import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "driz
 /**
  * Authentication is intentionally provider-owned. This table stores the adult
  * account record after an external identity provider has verified the user.
- * Passwords and OAuth access tokens never belong in Sports IQ's database.
+ * Passwords and OAuth access tokens never belong in RepQuest's database.
  */
 export const accounts = sqliteTable("accounts", {
   id: text("id").primaryKey(),

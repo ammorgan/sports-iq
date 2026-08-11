@@ -32,8 +32,10 @@ export async function GET() {
       ORDER BY xp DESC, p.created_at ASC
       LIMIT 50
     `).all<LeaderRow>();
-  } catch {
+  } catch (error) {
     // Fresh local previews can have the D1 binding before migrations are applied.
+    const message = error instanceof Error ? error.message : "Unknown D1 error";
+    if (!message.includes("no such table")) console.error("[leaderboard] Query failed:", message);
     return Response.json({ entries: [], status: "setup" }, { headers: { "Cache-Control": "no-store" } });
   }
 

@@ -3,10 +3,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useAudioPlayer } from "expo-audio";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Image,
   ImageBackground,
   ImageSourcePropType,
   Platform,
@@ -19,7 +21,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { arrangeChallengeOptions, buildPositionModule, buildSportIntroModule, SPORTS, type Challenge, type LearningModule, type Position, type Sport } from "../app/learning-data";
+import { beginnerGuideFor } from "../app/beginner-guides";
+import { arrangeChallengeOptions, buildPositionModule, generalModulesForSport, positionModuleId, sportIntroModuleId, SPORTS, type Challenge, type LearningModule, type Position, type Sport } from "../app/learning-data";
+import { sportClipFor, type SportClip } from "../app/sport-clips";
 
 const COLORS = {
   navy: "#12233b",
@@ -33,6 +37,11 @@ const COLORS = {
   green: "#4c8164",
   muted: "#68717a",
   line: "rgba(18,35,59,0.16)",
+};
+
+const MOBILE_LOCAL_SPORT_CLIPS: Partial<Record<string, VideoSource>> = {
+  lacrosse: require("./assets/sport-clips/lacrosse.mp4"),
+  "field-hockey": require("./assets/sport-clips/field-hockey.mp4"),
 };
 
 const AVATARS: Array<{ id: string; name: string; source: ImageSourcePropType }> = [
@@ -63,7 +72,7 @@ const AVATARS: Array<{ id: string; name: string; source: ImageSourcePropType }> 
 type AgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
 type AccountKind = "guest" | "self" | "child";
 type ConsentState = "local-only" | "not-required" | "pending" | "verified";
-type Screen = "home" | "sport" | "quiz" | "result" | "profile" | "league";
+type Screen = "home" | "sport" | "primer" | "quiz" | "result" | "profile" | "league";
 type Pathway = "general" | "position";
 type Profile = {
   name: string;
@@ -83,14 +92,14 @@ const AGE_BANDS: Array<{ value: AgeBand; title: string; note: string; seconds: n
   { value: "10-12", title: "Build the Basics", note: "Clear explanations, 60 seconds", seconds: 60 },
   { value: "13-15", title: "Read the Game", note: "Game language, 45 seconds", seconds: 45 },
   { value: "16-17", title: "Compete & Lead", note: "Deeper tactics, 35 seconds", seconds: 35 },
-  { value: "18+", title: "Full Sports IQ", note: "Complete detail, 30 seconds", seconds: 30 },
+  { value: "18+", title: "Full Game IQ", note: "Complete detail, 30 seconds", seconds: 30 },
 ];
 
 const DEFAULT_PROFILE: Profile = {
   name: "",
   ageBand: "10-12",
   avatarId: "avatar-01",
-  soundOn: true,
+  soundOn: false,
   xp: 0,
   completedSports: [],
   completedModules: [],
@@ -131,8 +140,8 @@ function GameAvatar({ id, size, animated = false }: { id: string; size: number; 
   return <MiniCharacter id={id} size={size} animated={animated} />;
 }
 
-function Logo() {
-  return <View style={styles.logo}><Text style={styles.logoSports}>SPORTS</Text><Text style={styles.logoIq}>IQ</Text></View>;
+function Logo({ size = 56 }: { size?: number }) {
+  return <Image accessibilityLabel="RepQuest logo" source={require("./assets/repquest-logo.png")} resizeMode="cover" style={[styles.logo, { width: size, height: size, borderRadius: Math.round(size * 0.28) }]} />;
 }
 
 function PrimaryButton({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
@@ -168,6 +177,24 @@ function FeedbackCoach({ correct, timedOut = false }: { correct: boolean; timedO
   </View>;
 }
 
+function QuizTimer({ duration, paused, onExpire }: { duration: number | null; paused: boolean; onExpire: () => void }) {
+  const [seconds, setSeconds] = useState(duration);
+  const expireRef = useRef(onExpire);
+
+  useEffect(() => { expireRef.current = onExpire; }, [onExpire]);
+  useEffect(() => {
+    if (duration === null || paused) return;
+    const timer = setInterval(() => setSeconds((current) => current === null ? null : Math.max(0, current - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [duration, paused]);
+  useEffect(() => {
+    if (seconds === 0 && !paused) expireRef.current();
+  }, [paused, seconds]);
+
+  if (seconds === null) return null;
+  return <View style={[styles.timer, seconds <= 10 && styles.timerLow]}><Text style={[styles.timerValue, seconds <= 10 && styles.timerValueLow]}>{seconds}</Text><Text style={styles.timerLabel}>SEC</Text></View>;
+}
+
 function MobilePrivacyGate({ onContinue }: { onContinue: (result: { ageBand: AgeBand; accountKind: AccountKind; consentState: ConsentState }) => void }) {
   const [ageBand, setAgeBand] = useState<AgeBand | null>(null);
   const [step, setStep] = useState<"age" | "account">("age");
@@ -187,7 +214,7 @@ function MobilePrivacyGate({ onContinue }: { onContinue: (result: { ageBand: Age
       </> : isChild ? <>
         <Text style={styles.privacyKicker}>A GROWN-UP OWNS THIS ACCOUNT</Text>
         <Text style={styles.privacyTitle}>PARENT{`\n`}<Text style={styles.privacyTitleAccent}>HANDOFF.</Text></Text>
-        <Text style={styles.privacyCopy}>Sports IQ will not ask for the child’s email or legal name. Parent accounts and consent stay off until secure sign-in, consent delivery, and bot protection are connected.</Text>
+        <Text style={styles.privacyCopy}>RepQuest will not ask for the child’s email or legal name. Parent accounts and consent stay off until secure sign-in, consent delivery, and bot protection are connected.</Text>
         <View style={styles.privacySetup}><MaterialCommunityIcons name="shield-check" size={24} color="#6547c7" /><View style={styles.privacySetupCopy}><Text style={styles.privacySetupTitle}>PARENT SETUP · SAFE MODE</Text><Text style={styles.privacySetupText}>No family information is collected in this preview.</Text></View></View>
         <PrimaryButton label="PLAY PRIVATELY ON THIS DEVICE" onPress={() => onContinue({ ageBand: ageBand as AgeBand, accountKind: "child", consentState: "local-only" })} />
         <Text style={styles.privacyFine}>Device play does not create an online child account.</Text>
@@ -203,19 +230,48 @@ function MobilePrivacyGate({ onContinue }: { onContinue: (result: { ageBand: Age
   </ScrollView></ImageBackground></SafeAreaView>;
 }
 
-function SportMotionPreviewMobile({ sport }: { sport: Sport }) {
-  const [travel] = useState(() => new Animated.Value(0));
+function SportClipVideoMobile({ clip, sport, source }: { clip: SportClip; sport: Sport; source: VideoSource }) {
+  const [playing, setPlaying] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const start = clip.startSeconds ?? 0;
+  const end = start + clip.durationSeconds;
+  const player = useVideoPlayer(source, (nextPlayer) => {
+    nextPlayer.muted = true;
+    nextPlayer.timeUpdateEventInterval = 0.25;
+    nextPlayer.currentTime = start;
+    nextPlayer.play();
+  });
+
   useEffect(() => {
-    const motion = Animated.loop(Animated.sequence([
-      Animated.timing(travel, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      Animated.timing(travel, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-    ]));
-    motion.start();
-    return () => motion.stop();
-  }, [travel]);
-  const translateX = travel.interpolate({ inputRange: [0, 1], outputRange: [0, 125] });
-  const translateY = travel.interpolate({ inputRange: [0, 1], outputRange: [0, -18] });
-  return <View style={[styles.motionPreview, { borderColor: sport.color, backgroundColor: sport.softColor }]}><View style={styles.motionCopy}><Text style={[styles.motionKicker, { color: sport.color }]}>6-SECOND SPORT SNAPSHOT</Text><Text style={styles.motionTitle}>See how {sport.name} moves</Text><Text style={styles.motionText}>Create space. Support the play. Move toward the target.</Text></View><View style={[styles.motionField, { borderColor: sport.color }]}><View style={[styles.motionCenterLine, { backgroundColor: sport.color }]} />{[[16, 18], [62, 66], [118, 24], [184, 62]].map(([left, top], index) => <View key={index} style={[styles.motionPlayer, { left, top, backgroundColor: index > 1 ? COLORS.gold : sport.color }]} />)}<Animated.View style={[styles.motionBall, { transform: [{ translateX }, { translateY }] }]}><Text style={[styles.motionBallText, { color: sport.color }]}>{sport.mark}</Text></Animated.View><Text style={styles.motionTarget}>★</Text></View></View>;
+    const timeSubscription = player.addListener("timeUpdate", ({ currentTime }) => {
+      if (currentTime >= end) {
+        player.currentTime = start;
+        player.play();
+      }
+    });
+    const playSubscription = player.addListener("playingChange", ({ isPlaying }) => setPlaying(isPlaying));
+    const statusSubscription = player.addListener("statusChange", ({ status }) => setFailed(status === "error"));
+    return () => {
+      timeSubscription.remove();
+      playSubscription.remove();
+      statusSubscription.remove();
+    };
+  }, [end, player, start]);
+
+  if (failed) return <View style={styles.motionVideoPlaceholder}><MaterialCommunityIcons name="video-off-outline" size={35} color={sport.color} /><Text style={styles.motionVideoPlaceholderTitle}>Clip could not load</Text><Text style={styles.motionVideoPlaceholderText}>Check your connection and try this sport again.</Text></View>;
+
+  const togglePlayback = () => {
+    if (playing) player.pause();
+    else player.play();
+  };
+
+  return <View style={styles.motionVideoFrame}><VideoView player={player} nativeControls={false} contentFit="cover" playsInline style={styles.motionVideo} /><Pressable accessibilityRole="button" accessibilityLabel={playing ? "Pause sport clip" : "Play sport clip"} onPress={togglePlayback} style={styles.motionVideoControl}><MaterialCommunityIcons name={playing ? "pause" : "play"} size={20} color="white" /></Pressable></View>;
+}
+
+function SportMotionPreviewMobile({ sport }: { sport: Sport }) {
+  const clip = sportClipFor(sport.id);
+  const source = MOBILE_LOCAL_SPORT_CLIPS[sport.id] ?? clip?.videoUrl;
+  return <View style={[styles.motionPreview, { borderColor: sport.color, backgroundColor: sport.softColor }]}><View style={styles.motionCopy}><Text style={[styles.motionKicker, { color: sport.color }]}>8-SECOND SPORT SNAPSHOT</Text><Text style={styles.motionTitle}>See how {sport.name} is played</Text><Text style={styles.motionText}>{clip?.cue ?? `We are reviewing a real ${sport.name} clip so this preview teaches the correct sport.`}</Text></View>{clip && source ? <><SportClipVideoMobile key={clip.videoUrl} clip={clip} sport={sport} source={source} /><Text style={styles.motionCredit}>FOOTAGE · {clip.sourceName.toUpperCase()}</Text></> : <View style={styles.motionVideoPlaceholder}><MaterialCommunityIcons name="video-outline" size={35} color={sport.color} /><Text style={styles.motionVideoPlaceholderTitle}>Real game clip coming next</Text><Text style={styles.motionVideoPlaceholderText}>We will only show footage that clearly matches {sport.name}.</Text></View>}</View>;
 }
 
 function AvatarPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
@@ -232,7 +288,7 @@ function adaptChallenge(challenge: Challenge, ageBand: AgeBand, questionIndex: n
   };
 }
 
-function SportsIQApp() {
+function RepQuestApp() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 720;
   const [loaded, setLoaded] = useState(false);
@@ -249,9 +305,9 @@ function SportsIQApp() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{ correct: boolean; timedOut?: boolean } | null>(null);
-  const [seconds, setSeconds] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [quizXp, setQuizXp] = useState(0);
+  const [primerIndex, setPrimerIndex] = useState(0);
   const correctSound = useAudioPlayer(require("./assets/sounds/correct.wav"));
   const incorrectSound = useAudioPlayer(require("./assets/sounds/incorrect.wav"));
 
@@ -273,7 +329,7 @@ function SportsIQApp() {
             name: isChildProfile ? "Player" : parsed.name ?? DEFAULT_PROFILE.name,
             ageBand: savedAgeBand,
             avatarId,
-            soundOn: parsed.soundOn ?? DEFAULT_PROFILE.soundOn,
+            soundOn: false,
             xp: parsed.xp ?? DEFAULT_PROFILE.xp,
             completedSports: parsed.completedSports ?? DEFAULT_PROFILE.completedSports,
             completedModules: parsed.completedModules ?? DEFAULT_PROFILE.completedModules,
@@ -294,21 +350,6 @@ function SportsIQApp() {
   useEffect(() => {
     if (loaded) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
   }, [loaded, profile]);
-
-  useEffect(() => {
-    if (screen !== "quiz" || feedback || !question) return;
-    if (AGE_BANDS.find((band) => band.value === profile.ageBand)?.seconds === null) return;
-    const timer = setInterval(() => setSeconds((current) => {
-      if (current === null) return null;
-      if (current <= 1) {
-        setFeedback({ correct: false, timedOut: true });
-        if (profile.soundOn) incorrectSound.play();
-        return 0;
-      }
-      return current - 1;
-    }), 1000);
-    return () => clearInterval(timer);
-  }, [screen, questionIndex, feedback, profile.ageBand, profile.soundOn, question, incorrectSound]);
 
   const playAnswerSound = async (correct: boolean) => {
     if (!profile.soundOn) return;
@@ -333,14 +374,17 @@ function SportsIQApp() {
 
   const startModule = (learningModule: LearningModule) => {
     setActiveModule(learningModule);
-    setQuiz(learningModule.challenges.map((challenge, index) => adaptChallenge(challenge, profile.ageBand, index, learningModule.id)));
+    const ageAppropriateChallenges = profile.ageBand === "7-9"
+      ? learningModule.challenges.filter((challenge) => !["multi", "ordering"].includes(challenge.type)).slice(0, 4)
+      : learningModule.challenges;
+    setQuiz(ageAppropriateChallenges.map((challenge, index) => adaptChallenge(challenge, profile.ageBand, index, learningModule.id)));
     setQuestionIndex(0);
     setSelected([]);
     setFeedback(null);
-    setSeconds(AGE_BANDS.find((band) => band.value === profile.ageBand)?.seconds ?? null);
     setCorrectCount(0);
     setQuizXp(0);
-    setScreen("quiz");
+    setPrimerIndex(0);
+    setScreen(learningModule.pathway === "general" && learningModule.id === sportIntroModuleId(learningModule.sportId) ? "primer" : "quiz");
   };
 
   const chooseOption = (option: string) => {
@@ -375,7 +419,6 @@ function SportsIQApp() {
       setQuestionIndex((index) => index + 1);
       setSelected([]);
       setFeedback(null);
-      setSeconds(AGE_BANDS.find((band) => band.value === profile.ageBand)?.seconds ?? null);
       return;
     }
     const earned = quizXp + 35;
@@ -409,8 +452,33 @@ function SportsIQApp() {
     return <SafeAreaView style={styles.safe}><StatusBar style="dark" /><ScrollView contentContainerStyle={[styles.onboarding, isTablet && styles.onboardingTablet]} keyboardShouldPersistTaps="handled"><View style={styles.onboardingCopy}><Logo /><Text style={styles.kicker}>{SPORTS.length} SPORTS · ONE PLAYBOOK · YOUR PACE</Text><Text style={[styles.displayTitle, isTablet && styles.displayTitleTablet]}>LEARN THE GAME.{"\n"}<Text style={styles.tealText}>SEE IT DIFFERENTLY.</Text></Text><Text style={styles.lede}>Pick a sport. Make the call. Learn why it works. Build real game knowledge in short, animated challenges.</Text><Text style={styles.fieldLabel}>CHOOSE YOUR AGE PATH</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ageList}>{AGE_BANDS.map((band) => <Pressable key={band.value} onPress={() => setDraftAge(band.value)} style={[styles.ageChoice, draftAge === band.value && styles.ageChoiceActive]}><Text style={[styles.ageValue, draftAge === band.value && styles.choiceTextActive]}>{band.value}</Text><Text style={[styles.ageTitle, draftAge === band.value && styles.choiceTextActive]}>{band.title}</Text><Text style={[styles.ageNote, draftAge === band.value && styles.choiceTextActive]}>{band.note}</Text></Pressable>)}</ScrollView><AvatarPicker value={draftAvatar} onChange={setDraftAvatar} /><Text style={styles.fieldLabel}>WHAT SHOULD WE CALL YOU?</Text><TextInput accessibilityLabel="Player name" value={draftName} onChangeText={setDraftName} placeholder="Your first name" placeholderTextColor="#89919a" style={styles.nameInput} returnKeyType="done" onSubmitEditing={createProfile} /><PrimaryButton label="BUILD MY PLAYBOOK" onPress={createProfile} disabled={!draftName.trim()} /><Text style={styles.privacyNote}>No account required. Progress saves on this device.</Text></View>{isTablet && <View style={styles.onboardingArena}><Text style={styles.arenaLabel}>YOUR FIRST MISSION</Text><View style={styles.squad}><MiniCharacter id="avatar-01" size={152} animated /><MiniCharacter id="avatar-10" size={162} animated /><MiniCharacter id="avatar-15" size={152} animated /></View>{["Choose a sport", "Make the read", "Master the concept"].map((step, index) => <View key={step} style={styles.missionStep}><View style={[styles.stepNumber, index === 0 && styles.stepNumberActive]}><Text style={styles.stepNumberText}>0{index + 1}</Text></View><Text style={styles.missionText}>{step}</Text></View>)}</View>}</ScrollView></SafeAreaView>;
   }
 
-  const gameChrome = screen === "home" || screen === "sport" || screen === "league";
-  const header = <View style={[styles.header, gameChrome && styles.headerGame]}><Pressable onPress={() => setScreen("home")}><Logo /></Pressable><View style={styles.headerActions}><Pressable accessibilityLabel="Open XP league" onPress={() => setScreen("league")} style={[styles.leagueButton, gameChrome && styles.leagueButtonGame]}><MaterialCommunityIcons name="trophy-variant" size={18} color={gameChrome ? COLORS.gold : COLORS.teal} /></Pressable><Pressable accessibilityLabel="Open XP league" onPress={() => setScreen("league")} style={[styles.xpPill, gameChrome && styles.xpPillGame]}><Text style={styles.xpLabel}>XP</Text><Text style={[styles.xpValue, gameChrome && styles.xpValueGame]}>{profile.xp}</Text></Pressable><Pressable accessibilityLabel={`${profile.soundOn ? "Turn off" : "Turn on"} answer feedback sounds`} onPress={() => setProfile((current) => ({ ...current, soundOn: !current.soundOn }))} style={[styles.sfxButton, profile.soundOn && styles.sfxButtonActive, gameChrome && styles.sfxButtonGame]}><MaterialCommunityIcons name={profile.soundOn ? "volume-high" : "volume-off"} size={18} color={gameChrome ? "white" : profile.soundOn ? COLORS.teal : COLORS.muted} /></Pressable><Pressable accessibilityLabel="Open profile" onPress={() => { setDraftName(profile.name); setDraftAge(profile.ageBand); setDraftAvatar(profile.avatarId); setScreen("profile"); }} style={[styles.headerAvatar, gameChrome && styles.headerAvatarGame]}><GameAvatar id={profile.avatarId} size={42} /></Pressable></View></View>;
+  const gameChrome = screen === "home" || screen === "sport" || screen === "profile" || screen === "league";
+  const header = <View style={[styles.header, gameChrome && styles.headerGame]}><Pressable accessibilityLabel="Return to RepQuest home" onPress={() => setScreen("home")}><Logo /></Pressable><View style={styles.headerActions}><Pressable accessibilityLabel="Open XP league" onPress={() => setScreen("league")} style={[styles.leagueButton, gameChrome && styles.leagueButtonGame]}><MaterialCommunityIcons name="trophy-variant" size={18} color={gameChrome ? COLORS.gold : COLORS.teal} /></Pressable><Pressable accessibilityLabel="Open XP league" onPress={() => setScreen("league")} style={[styles.xpPill, gameChrome && styles.xpPillGame]}><Text style={styles.xpLabel}>XP</Text><Text style={[styles.xpValue, gameChrome && styles.xpValueGame]}>{profile.xp}</Text></Pressable>{/* Sound controls stay hidden until RepQuest has a complete audio experience. */}<Pressable accessibilityLabel="Open profile" onPress={() => { setDraftName(profile.name); setDraftAge(profile.ageBand); setDraftAvatar(profile.avatarId); setScreen("profile"); }} style={[styles.headerAvatar, gameChrome && styles.headerAvatarGame]}><GameAvatar id={profile.avatarId} size={42} /></Pressable></View></View>;
+
+  if (screen === "primer" && activeModule) {
+    const guide = beginnerGuideFor(activeModule.sportId);
+    const lesson = guide?.lessons[primerIndex];
+    if (guide && lesson) {
+      const isLast = primerIndex === guide.lessons.length - 1;
+      return <SafeAreaView style={[styles.safe, styles.homeSafe]}><StatusBar style="light" />
+        <View style={[styles.quizHeader, styles.quizHeaderGame]}><BackButton label="PATH" onPress={() => setScreen("sport")} /><View style={styles.primerHeaderDots}>{guide.lessons.map((_, index) => <View key={index} style={[styles.primerHeaderDot, index <= primerIndex && { backgroundColor: sport.color }]} />)}</View><Text style={[styles.questionCount, styles.questionCountGame]}>{primerIndex + 1}/{guide.lessons.length}</Text></View>
+        <ImageBackground source={require("./assets/backgrounds/home-arena-purple.png")} resizeMode="cover" style={styles.gameFlowBackground}>
+          <ScrollView contentContainerStyle={[styles.primerContent, isTablet && styles.quizContentTablet]}>
+            <View style={styles.primerStage}>
+              <View style={[styles.primerMark, { backgroundColor: sport.color }]}><MaterialCommunityIcons name={sport.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={44} color="white" /></View>
+              <Text style={[styles.primerKicker, { color: sport.color }]}>{lesson.eyebrow}</Text>
+              <Text style={styles.primerSport}>{sport.name} · Beginner playbook</Text>
+              <Text style={[styles.primerTitle, isTablet && styles.questionTitleTablet]}>{lesson.title}</Text>
+              <Text style={styles.primerBody}>{lesson.body}</Text>
+              {lesson.terms && <View style={styles.primerTerms}>{lesson.terms.map((item) => <View key={item.term} style={[styles.primerTerm, { borderLeftColor: sport.color }]}><Text style={styles.primerTermName}>{item.term}</Text><Text style={styles.primerTermMeaning}>{item.meaning}</Text></View>)}</View>}
+              <View style={styles.primerCoach}><GameAvatar id="avatar-12" size={98} animated /><View style={styles.primerCoachBubble}><Text style={styles.primerCoachTitle}>{primerIndex === 0 ? "START HERE" : isLast ? "READY FOR A REP" : "YOU’VE GOT THIS"}</Text><Text style={styles.primerCoachText}>{primerIndex === 0 ? guide.welcome : isLast ? "The quiz checks what this playbook just taught. It is always okay to learn from a miss." : "Take your time. The words will make more sense each time you see the sport."}</Text></View></View>
+              <View style={styles.primerActions}>{primerIndex > 0 && <Pressable onPress={() => setPrimerIndex((index) => index - 1)}><Text style={styles.primerPrevious}>← PREVIOUS</Text></Pressable>}<View style={styles.primerPrimary}><PrimaryButton label={isLast ? "TRY THE QUICK CHECK" : "KEEP LEARNING"} onPress={() => isLast ? setScreen("quiz") : setPrimerIndex((index) => index + 1)} /></View></View>
+            </View>
+          </ScrollView>
+        </ImageBackground>
+      </SafeAreaView>;
+    }
+  }
 
   if (screen === "quiz" && question) {
     const expected = Array.isArray(question.correct) ? question.correct : [question.correct];
@@ -426,7 +494,7 @@ function SportsIQApp() {
       <ImageBackground source={require("./assets/backgrounds/home-arena-purple.png")} resizeMode="cover" style={styles.gameFlowBackground}>
       <ScrollView contentContainerStyle={[styles.quizContent, isTablet && styles.quizContentTablet]}>
         <View style={styles.quizStage}>
-        <View style={styles.quizMeta}><View><View style={[styles.interactionBadge, { backgroundColor: sport.color }]}><Text style={styles.interactionBadgeText}>{question.type === "multi" ? "PICK THE TEAM" : question.type === "ordering" ? "BUILD THE SEQUENCE" : "MAKE THE CALL"}</Text></View><Text style={styles.quizSport}>{sport.name}{activeModule?.position ? ` · ${activeModule.position}` : ""}</Text></View>{seconds !== null && <View style={[styles.timer, seconds <= 10 && styles.timerLow]}><Text style={[styles.timerValue, seconds <= 10 && styles.timerValueLow]}>{seconds}</Text><Text style={styles.timerLabel}>SEC</Text></View>}</View>
+        <View style={styles.quizMeta}><View><View style={[styles.interactionBadge, { backgroundColor: sport.color }]}><Text style={styles.interactionBadgeText}>{question.type === "multi" ? "PICK THE TEAM" : question.type === "ordering" ? "BUILD THE SEQUENCE" : "MAKE THE CALL"}</Text></View><Text style={styles.quizSport}>{sport.name}{activeModule?.position ? ` · ${activeModule.position}` : ""}</Text></View><QuizTimer key={question.id} duration={agePath.seconds} paused={!!feedback} onExpire={() => { setFeedback({ correct: false, timedOut: true }); if (profile.soundOn) incorrectSound.play(); }} /></View>
         <QuestionVisual question={question} sport={sport} />
         <Text style={[styles.questionTitle, isTablet && styles.questionTitleTablet]}>{question.prompt}</Text>
         <Text style={styles.answerInstruction}>{instruction}</Text>
@@ -448,7 +516,7 @@ function SportsIQApp() {
     const nextMilestone = XP_MILESTONES.find((milestone) => milestone.xp > profile.xp);
     return <SafeAreaView style={[styles.safe, styles.homeSafe]}><StatusBar style="light" />{header}<ImageBackground source={require("./assets/backgrounds/home-arena-purple.png")} resizeMode="cover" style={styles.gameFlowBackground}><ScrollView contentContainerStyle={[styles.page, styles.gameFlowPage, { width: contentWidth }]}>
       <BackButton label="HOME" onPress={() => setScreen("home")} />
-      <View style={styles.leagueHero}><View><Text style={styles.leagueKicker}>XP LEAGUE</Text><Text style={styles.leagueTitle}>CLIMB BY{`\n`}LEARNING.</Text><Text style={styles.leagueCopy}>Finish missions. Build real Sports IQ. Earn your place.</Text></View><MaterialCommunityIcons name="trophy-variant" size={78} color={COLORS.gold} /></View>
+      <View style={styles.leagueHero}><View><Text style={styles.leagueKicker}>XP LEAGUE</Text><Text style={styles.leagueTitle}>CLIMB BY{`\n`}LEARNING.</Text><Text style={styles.leagueCopy}>Finish missions. Build real game knowledge. Earn your place.</Text></View><MaterialCommunityIcons name="trophy-variant" size={78} color={COLORS.gold} /></View>
       <View style={styles.leagueSafety}><MaterialCommunityIcons name="shield-check" size={26} color={COLORS.teal} /><View style={styles.leagueSafetyCopy}><Text style={styles.leagueSafetyTitle}>{isChild ? "PRIVATE YOUTH LEAGUE" : "ALIAS-ONLY PUBLIC LEAGUE"}</Text><Text style={styles.leagueSafetyText}>{isChild ? "Players under 13 stay off the public board. Beat your own XP milestones." : "Only opted-in players age 13+ appear. No legal names, ages, email, messages, or followers."}</Text></View></View>
       <View style={styles.leagueScore}><GameAvatar id={profile.avatarId} size={150} animated /><Text style={styles.leagueScoreLabel}>YOUR SCORE</Text><Text style={styles.leagueScoreValue}>{profile.xp.toLocaleString()} XP</Text><Text style={styles.leagueScoreNext}>{nextMilestone ? `${nextMilestone.xp - profile.xp} XP to ${nextMilestone.name}` : "Top milestone reached"}</Text></View>
       <View style={styles.mobileLeagueBoard}><Text style={styles.mobileLeagueBoardTitle}>{isChild ? "YOUR PRIVATE CLIMB" : "PUBLIC LEAGUE"}</Text>{isChild ? XP_MILESTONES.map((milestone, index) => { const reached = profile.xp >= milestone.xp; return <View key={milestone.name} style={[styles.milestoneRow, reached && styles.milestoneRowReached]}><View style={[styles.milestoneRank, reached && styles.milestoneRankReached]}><Text style={styles.milestoneRankText}>{reached ? "✓" : index + 1}</Text></View><View style={styles.milestoneCopy}><Text style={styles.milestoneName}>{milestone.name}</Text><Text style={styles.milestoneXp}>{milestone.xp.toLocaleString()} XP</Text></View><Text style={[styles.milestoneStatus, reached && styles.milestoneStatusReached]}>{reached ? "CLEARED" : `${Math.max(0, milestone.xp - profile.xp)} TO GO`}</Text></View>; }) : <View style={styles.leagueEmpty}><MaterialCommunityIcons name="account-group" size={42} color={COLORS.teal} /><Text style={styles.leagueEmptyTitle}>READY FOR THE FIRST PLAYERS</Text><Text style={styles.leagueEmptyText}>Connect a secure account to opt in when provider keys go live. Guest XP remains private.</Text></View>}</View>
@@ -459,8 +527,8 @@ function SportsIQApp() {
     return <SafeAreaView style={[styles.safe, styles.homeSafe]}><StatusBar style="light" />{header}<ImageBackground source={require("./assets/backgrounds/home-arena-purple.png")} resizeMode="cover" style={styles.gameFlowBackground}><ScrollView contentContainerStyle={[styles.page, styles.gameFlowPage, { width: contentWidth }]}>
       <BackButton label="HOME" onPress={() => setScreen("home")} />
       <View style={[styles.profileLayout, isTablet && styles.profileLayoutTablet]}>
-        <View style={styles.playerCard}><Text style={styles.kicker}>YOUR AVATAR</Text><View style={styles.profileCharacter}><GameAvatar id={draftAvatar} size={190} animated /></View><Text style={styles.playerName}>{profile.accountKind === "child" ? "Player" : draftName || profile.name}</Text><Text style={styles.playerStats}>{profile.xp} XP · {profile.completedModules.length} missions complete</Text><View style={styles.playerStripe}><Text style={styles.playerStripeText}>{profile.ageBand}</Text><Text style={styles.playerStripeText}>SPORTS IQ</Text></View></View>
-        <View style={styles.profileForm}><Text style={styles.profileTitle}>MY PROFILE</Text>{profile.accountKind !== "child" && <><Text style={styles.fieldLabel}>DISPLAY NAME</Text><TextInput value={draftName} onChangeText={setDraftName} style={styles.nameInput} /></>}<Text style={styles.fieldLabel}>AGE PATH</Text><View style={styles.lockedAge}><Text style={styles.lockedAgeValue}>{profile.ageBand}</Text><Text style={styles.lockedAgeText}>Set during age check · locked for the learning path</Text></View><AvatarPicker value={draftAvatar} onChange={setDraftAvatar} /><PrimaryButton label="SAVE PROFILE" onPress={saveProfile} disabled={profile.accountKind !== "child" && !draftName.trim()} /></View>
+        <View style={styles.playerCard}><Text style={styles.kicker}>YOUR AVATAR</Text><View style={styles.profileCharacter}><GameAvatar id={draftAvatar} size={190} animated /></View><Text style={styles.playerName}>{profile.accountKind === "child" ? "Player" : draftName || profile.name}</Text><Text style={styles.playerStats}>{profile.xp} XP · {profile.completedModules.length} missions complete</Text><View style={styles.playerStripe}><Text style={styles.playerStripeText}>{profile.ageBand}</Text><Text style={styles.playerStripeText}>REPQUEST</Text></View></View>
+        <View style={styles.profileForm}><Text style={styles.profileTitle}>MY PROFILE</Text>{profile.accountKind !== "child" && <><Text style={styles.fieldLabel}>DISPLAY NAME</Text><TextInput value={draftName} onChangeText={setDraftName} style={styles.nameInput} /></>}<Text style={styles.fieldLabel}>AGE PATH</Text><View style={styles.lockedAge}><Text style={styles.lockedAgeValue}>{profile.ageBand}</Text><Text style={styles.lockedAgeText}>Controls question language and timers on this device.</Text><Pressable accessibilityRole="button" onPress={() => { setProfile((current) => ({ ...current, privacyGateComplete: false })); setScreen("home"); }} style={styles.changeAgeButton}><Text style={styles.changeAgeButtonText}>CHANGE</Text></Pressable></View><AvatarPicker value={draftAvatar} onChange={setDraftAvatar} /><PrimaryButton label="SAVE PROFILE" onPress={saveProfile} disabled={profile.accountKind !== "child" && !draftName.trim()} /></View>
       </View>
     </ScrollView></ImageBackground></SafeAreaView>;
   }
@@ -470,23 +538,28 @@ function SportsIQApp() {
       groups[position.group] = [...(groups[position.group] ?? []), position];
       return groups;
     }, {});
-    const generalModule = buildSportIntroModule(sport);
+    const generalModules = generalModulesForSport(sport);
+    const nextGeneralModule = generalModules.find((module) => !profile.completedModules.includes(module.id)) ?? generalModules[0];
+    const positionsUnlocked = generalModules.every((module) => profile.completedModules.includes(module.id));
     const positionModule = selectedPosition ? buildPositionModule(sport, selectedPosition) : null;
-    const completedPositionCount = sport.positions.filter((position) => profile.completedModules.includes(buildPositionModule(sport, position).id)).length;
-    const completedMissionCount = completedPositionCount + (profile.completedModules.includes(generalModule.id) ? 1 : 0);
-    const pathPercent = Math.round((completedMissionCount / (sport.positions.length + 1)) * 100);
+    const completedPositionCount = sport.positions.filter((position) => profile.completedModules.includes(positionModuleId(sport.id, position.name))).length;
+    const completedGeneralCount = generalModules.filter((module) => profile.completedModules.includes(module.id)).length;
+    const completedMissionCount = completedPositionCount + completedGeneralCount;
+    const pathPercent = Math.round((completedMissionCount / (sport.positions.length + generalModules.length)) * 100);
     const pathLabel = sport.pathLabel ?? "POSITION";
     return <SafeAreaView style={[styles.safe, styles.homeSafe]}><StatusBar style="light" />{header}<ImageBackground source={require("./assets/backgrounds/home-arena-purple.png")} resizeMode="cover" style={styles.gameFlowBackground}><ScrollView contentContainerStyle={[styles.page, styles.gameFlowPage, { width: contentWidth }]}>
       <BackButton label="SPORTS" onPress={() => setScreen("home")} />
       <View style={[styles.sportHero, styles.sportHeroGame, { backgroundColor: sport.color }]}><View style={[styles.heroOrb, styles.heroOrbOne]} /><View style={[styles.heroOrb, styles.heroOrbTwo]} /><View style={[styles.sportMarkLarge, styles.sportMarkHero]}><MaterialCommunityIcons name={sport.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={43} color={COLORS.navy} /></View><View style={styles.sportHeroCopy}><Text style={styles.sportHeroKicker}>YOUR SPORT ARENA</Text><Text style={[styles.sportTitle, styles.sportTitleLight]}>{sport.name}</Text><Text style={styles.sportNoteLight}>{sport.pathNote ?? "Learn the rules, positions, and game decisions that matter."}</Text><View style={styles.heroScoreRow}><View style={styles.heroScorePill}><Text style={styles.heroScoreValue}>{sport.positions.length}</Text><Text style={styles.heroScoreLabel}>{pathLabel} ROOMS</Text></View><View style={styles.heroScorePill}><Text style={styles.heroScoreValue}>{pathPercent}%</Text><Text style={styles.heroScoreLabel}>{pathLabel} IQ</Text></View><View style={styles.heroScorePill}><Text style={styles.heroScoreValue}>{agePath.seconds ?? "∞"}</Text><Text style={styles.heroScoreLabel}>{agePath.seconds === null ? "NO TIMER" : "SEC / READ"}</Text></View></View></View></View>
+      <View style={styles.sportStartNow}><PrimaryButton label={`${profile.completedModules.includes(nextGeneralModule.id) ? "PRACTICE" : "START HERE"} · ${nextGeneralModule.title.toUpperCase()}`} onPress={() => startModule(nextGeneralModule)} /></View>
       <SportMotionPreviewMobile sport={sport} />
 
       <View style={styles.pathTabs}>
         <Pressable onPress={() => { setPathway("general"); setSelectedPosition(null); }} style={[styles.pathTab, pathway === "general" && styles.pathTabActive, pathway === "general" && { borderColor: sport.color }]}><View style={[styles.pathTabNumber, pathway === "general" && { backgroundColor: sport.color }]}><Text style={[styles.pathTabNumberText, pathway === "general" && styles.choiceTextActive]}>01</Text></View><View style={styles.pathTabCopy}><Text style={[styles.pathTabTitle, pathway === "general" && { color: sport.color }]}>GENERAL SPORT IQ</Text><Text style={styles.pathTabNote}>Rules, scoring & game shape</Text></View><Text style={styles.pathTabArrow}>→</Text></Pressable>
-        <Pressable onPress={() => setPathway("position")} style={[styles.pathTab, pathway === "position" && styles.pathTabActive, pathway === "position" && { borderColor: sport.color }]}><View style={[styles.pathTabNumber, pathway === "position" && { backgroundColor: sport.color }]}><Text style={[styles.pathTabNumberText, pathway === "position" && styles.choiceTextActive]}>02</Text></View><View style={styles.pathTabCopy}><Text style={[styles.pathTabTitle, pathway === "position" && { color: sport.color }]}>{pathLabel} IQ</Text><Text style={styles.pathTabNote}>{completedPositionCount}/{sport.positions.length} rooms cleared</Text></View><Text style={styles.pathTabArrow}>→</Text></Pressable>
+        <Pressable onPress={() => setPathway("position")} style={[styles.pathTab, pathway === "position" && styles.pathTabActive, pathway === "position" && { borderColor: sport.color }]}><View style={[styles.pathTabNumber, pathway === "position" && { backgroundColor: sport.color }]}><Text style={[styles.pathTabNumberText, pathway === "position" && styles.choiceTextActive]}>02</Text></View><View style={styles.pathTabCopy}><Text style={[styles.pathTabTitle, pathway === "position" && { color: sport.color }]}>{pathLabel} IQ</Text><Text style={styles.pathTabNote}>{positionsUnlocked ? `${completedPositionCount}/${sport.positions.length} rooms cleared` : "Finish beginner path to unlock"}</Text></View><Text style={styles.pathTabArrow}>{positionsUnlocked ? "→" : "◆"}</Text></Pressable>
       </View>
 
-      {pathway === "general" ? <View style={[styles.missionCard, { borderTopColor: sport.color }]}><View style={styles.missionCardTop}><View><Text style={[styles.kicker, { color: sport.color }]}>LEVEL 1 · FUNDAMENTALS</Text><Text style={styles.lessonTitle}>{generalModule.title}</Text></View><View style={[styles.xpBurst, { backgroundColor: sport.color }]}><Text style={styles.xpBurstValue}>+75</Text><Text style={styles.xpBurstLabel}>XP</Text></View></View><Text style={styles.lessonText}>Learn the shape of the game through {generalModule.challenges.length} quick calls. Your {profile.ageBand} path uses {agePath.seconds === null ? "no timer" : `${agePath.seconds} seconds per question`}.</Text><View style={styles.missionChips}><Text style={styles.missionChip}>RULES READ</Text><Text style={styles.missionChip}>ARENA IQ</Text><Text style={styles.missionChip}>{generalModule.estimatedMinutes} MIN</Text></View><PrimaryButton label={profile.completedModules.includes(generalModule.id) ? "PLAY FUNDAMENTALS AGAIN" : "START FUNDAMENTALS"} onPress={() => startModule(generalModule)} /></View>
+      {pathway === "general" ? <View>{generalModules.map((generalModule, index) => { const complete = profile.completedModules.includes(generalModule.id); const unlocked = index === 0 || profile.completedModules.includes(generalModules[index - 1].id); return <View key={generalModule.id} style={[styles.missionCard, { borderTopColor: sport.color, marginBottom: 14 }, !unlocked && styles.disabled]}><View style={styles.missionCardTop}><View><Text style={[styles.kicker, { color: sport.color }]}>STEP {index + 1} · BEGINNER PATH</Text><Text style={styles.lessonTitle}>{generalModule.title}</Text></View><View style={[styles.xpBurst, { backgroundColor: sport.color }]}><Text style={styles.xpBurstValue}>{complete ? "✓" : `0${index + 1}`}</Text><Text style={styles.xpBurstLabel}>{complete ? "DONE" : "STEP"}</Text></View></View><Text style={styles.lessonText}>{generalModule.description}</Text><PrimaryButton label={complete ? "PRACTICE AGAIN" : unlocked ? "START THIS STEP" : "FINISH THE STEP ABOVE"} onPress={() => unlocked && startModule(generalModule)} disabled={!unlocked} /></View>; })}</View>
+      : !positionsUnlocked ? <View style={styles.positionRoom}><Text style={[styles.kicker, { color: sport.color }]}>POSITION IQ</Text><Text style={styles.sectionTitle}>MEET THE GAME FIRST.</Text><Text style={styles.sectionCopy}>Finish the beginner path—including Meet the Positions—before choosing a specialized role.</Text><View style={{ marginTop: 18 }}><PrimaryButton label="CONTINUE BEGINNER PATH" onPress={() => { setPathway("general"); startModule(nextGeneralModule); }} /></View></View>
       : selectedPosition && positionModule ? <View style={styles.positionDetail}>
         <BackButton label="ALL PATHS" onPress={() => setSelectedPosition(null)} />
         <View style={[styles.positionHero, { backgroundColor: sport.color }]}><View style={styles.positionHeroBadge}><Text style={[styles.positionHeroInitials, { color: sport.color }]}>{selectedPosition.name.split(" ").map((part) => part[0]).join("").slice(0, 3)}</Text></View><View style={styles.positionHeroCopy}><Text style={styles.positionHeroGroup}>{selectedPosition.group.toUpperCase()} · LEVEL 1</Text><Text style={styles.positionHeroTitle}>{selectedPosition.name} IQ</Text><Text style={styles.positionHeroText}>Learn to {selectedPosition.focus} through real reads, responsibilities, and decisions.</Text></View></View>
@@ -496,7 +569,7 @@ function SportsIQApp() {
       </View>
       : <View style={styles.positionRoom}>
         <View style={styles.positionRoomHeading}><View><Text style={[styles.kicker, { color: sport.color }]}>CHOOSE YOUR {pathLabel} ROOM</Text><Text style={styles.sectionTitle}>{sport.pathQuestion ?? "Who are you on the field?"}</Text><Text style={styles.sectionCopy}>Each path has its own keys, reads, responsibilities, and game decisions.</Text></View><View style={[styles.roomProgress, { borderColor: sport.color }]}><Text style={[styles.roomProgressValue, { color: sport.color }]}>{completedPositionCount}/{sport.positions.length}</Text><Text style={styles.roomProgressLabel}>ROOMS CLEARED</Text></View></View>
-        {Object.entries(groupedPositions).map(([group, positions], groupIndex) => <View key={group} style={styles.positionGroup}><View style={styles.positionGroupHeading}><View style={[styles.positionGroupDot, { backgroundColor: sport.color }]} /><Text style={styles.positionGroupTitle}>{group.toUpperCase()}</Text><Text style={styles.positionGroupCount}>{positions.length} ROLES</Text></View><View style={styles.positionGrid}>{positions.map((position, index) => { const positionLearningModule = buildPositionModule(sport, position); const done = profile.completedModules.includes(positionLearningModule.id); const initials = position.name.split(" ").map((part) => part[0]).join("").slice(0, 3); return <Pressable key={position.name} onPress={() => setSelectedPosition(position)} style={({ pressed }) => [styles.positionCard, { borderTopColor: groupIndex % 2 === 0 ? sport.color : COLORS.gold }, pressed && styles.pressed]}><View style={styles.positionCardTop}><View style={[styles.positionBadge, { backgroundColor: index % 2 === 0 ? sport.color : sport.softColor }]}><Text style={[styles.positionBadgeText, index % 2 !== 0 && { color: sport.color }]}>{done ? "✓" : initials}</Text></View><Text style={[styles.positionStatus, done && { color: COLORS.green }]}>{done ? "CLEARED" : "+100 XP"}</Text></View><Text style={styles.positionName}>{position.name}</Text><Text style={styles.positionFocus} numberOfLines={3}>Learn to {position.focus}.</Text><View style={styles.positionEnter}><Text style={[styles.positionEnterText, { color: sport.color }]}>{done ? "PRACTICE PATH" : "ENTER ROOM"}</Text><Text style={[styles.positionEnterArrow, { color: sport.color }]}>→</Text></View></Pressable>; })}</View></View>)}
+        {Object.entries(groupedPositions).map(([group, positions], groupIndex) => <View key={group} style={styles.positionGroup}><View style={styles.positionGroupHeading}><View style={[styles.positionGroupDot, { backgroundColor: sport.color }]} /><Text style={styles.positionGroupTitle}>{group.toUpperCase()}</Text><Text style={styles.positionGroupCount}>{positions.length} ROLES</Text></View><View style={styles.positionGrid}>{positions.map((position, index) => { const done = profile.completedModules.includes(positionModuleId(sport.id, position.name)); const initials = position.name.split(" ").map((part) => part[0]).join("").slice(0, 3); return <Pressable key={position.name} onPress={() => setSelectedPosition(position)} style={({ pressed }) => [styles.positionCard, { borderTopColor: groupIndex % 2 === 0 ? sport.color : COLORS.gold }, pressed && styles.pressed]}><View style={styles.positionCardTop}><View style={[styles.positionBadge, { backgroundColor: index % 2 === 0 ? sport.color : sport.softColor }]}><Text style={[styles.positionBadgeText, index % 2 !== 0 && { color: sport.color }]}>{done ? "✓" : initials}</Text></View><Text style={[styles.positionStatus, done && { color: COLORS.green }]}>{done ? "CLEARED" : "+100 XP"}</Text></View><Text style={styles.positionName}>{position.name}</Text><Text style={styles.positionFocus} numberOfLines={3}>Learn to {position.focus}.</Text><View style={styles.positionEnter}><Text style={[styles.positionEnterText, { color: sport.color }]}>{done ? "PRACTICE PATH" : "ENTER ROOM"}</Text><Text style={[styles.positionEnterArrow, { color: sport.color }]}>→</Text></View></Pressable>; })}</View></View>)}
       </View>}
     </ScrollView></ImageBackground></SafeAreaView>;
   }
@@ -511,7 +584,7 @@ function SportsIQApp() {
       <View style={styles.homeGuidePlayer}><GameAvatar id={profile.avatarId} size={isTablet ? 150 : 118} animated /></View>
     </View>
     <View style={styles.sportGrid}>{SPORTS.map((item) => {
-      const missionIds = [buildSportIntroModule(item).id, ...item.positions.map((position) => buildPositionModule(item, position).id)];
+      const missionIds = [...generalModulesForSport(item).map((module) => module.id), ...item.positions.map((position) => positionModuleId(item.id, position.name))];
       const completedMissions = missionIds.filter((id) => profile.completedModules.includes(id)).length;
       const percent = Math.round((completedMissions / missionIds.length) * 100);
       const progressLabel = completedMissions === 0 ? "Not started" : completedMissions === missionIds.length ? "Complete" : `${completedMissions}/${missionIds.length} missions`;
@@ -525,7 +598,7 @@ function SportsIQApp() {
 }
 
 export default function App() {
-  return <SafeAreaProvider><SportsIQApp /></SafeAreaProvider>;
+  return <SafeAreaProvider><RepQuestApp /></SafeAreaProvider>;
 }
 
 const styles = StyleSheet.create({
@@ -536,9 +609,7 @@ const styles = StyleSheet.create({
   gameFlowPage: { paddingTop: 10 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 22, backgroundColor: COLORS.paper },
   loadingText: { color: COLORS.muted, fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
-  logo: { flexDirection: "row", alignItems: "stretch", transform: [{ skewX: "-7deg" }] },
-  logoSports: { backgroundColor: COLORS.navy, color: COLORS.surface, fontSize: 14, fontWeight: "900", paddingHorizontal: 10, paddingVertical: 9, letterSpacing: -0.5 },
-  logoIq: { backgroundColor: COLORS.gold, color: COLORS.navy, fontSize: 18, fontWeight: "900", paddingHorizontal: 9, paddingVertical: 7 },
+  logo: { backgroundColor: "#100b3d", shadowColor: "#09051f", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
   onboarding: { flexGrow: 1, padding: 22, gap: 28, backgroundColor: COLORS.paper },
   onboardingTablet: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 65, paddingHorizontal: 55 },
   onboardingCopy: { width: "100%", maxWidth: 680 },
@@ -586,10 +657,6 @@ const styles = StyleSheet.create({
   xpLabel: { padding: 4, backgroundColor: "#f4e4bf", color: COLORS.navy, fontSize: 7, fontWeight: "900" },
   xpValue: { color: COLORS.navy, fontSize: 11, fontWeight: "900" },
   xpValueGame: { color: "white" },
-  sfxButton: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.line, borderRadius: 19, backgroundColor: COLORS.surface },
-  sfxButtonActive: { borderColor: COLORS.teal },
-  sfxButtonGame: { borderColor: "rgba(255,255,255,.2)", backgroundColor: "rgba(255,255,255,.1)" },
-  sfxText: { color: COLORS.teal, fontSize: 7, fontWeight: "900", letterSpacing: 0.6 },
   headerAvatar: { width: 46, height: 46, alignItems: "center", justifyContent: "center", overflow: "hidden", borderWidth: 2, borderColor: COLORS.teal, borderRadius: 23, backgroundColor: "#e2eeea" },
   headerAvatarGame: { borderColor: COLORS.gold, backgroundColor: "#34276f" },
   page: { alignSelf: "center", padding: 18, paddingBottom: 70 },
@@ -605,16 +672,6 @@ const styles = StyleSheet.create({
   homeStepNumberText: { color: COLORS.navy, fontSize: 9, fontWeight: "900" },
   homeStepText: { color: "rgba(255,255,255,.75)", fontSize: 7, fontWeight: "900", letterSpacing: 0.9 },
   homeGuidePlayer: { width: 126, height: 150, alignItems: "center", justifyContent: "flex-end", overflow: "hidden", borderTopLeftRadius: 72, borderBottomLeftRadius: 72, backgroundColor: "transparent" },
-  homeHero: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 38 },
-  homeHeroTablet: { gap: 65, paddingVertical: 70 },
-  homeHeroCopy: { flex: 1 },
-  homeTitle: { color: COLORS.navy, fontSize: 38, fontWeight: "900", letterSpacing: -2.5, lineHeight: 35 },
-  homeTitleTablet: { fontSize: 68, lineHeight: 60, letterSpacing: -4.8 },
-  homePlayer: { width: 155, alignItems: "center", justifyContent: "flex-end", overflow: "hidden", borderWidth: 1, borderColor: COLORS.teal, backgroundColor: "#e4eeea" },
-  gameReady: { width: "100%", paddingVertical: 6, backgroundColor: COLORS.navy, color: "white", fontSize: 7, fontWeight: "900", letterSpacing: 1, textAlign: "center" },
-  heroChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 14 },
-  heroChip: { padding: 7, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surface, color: COLORS.teal, fontSize: 7, fontWeight: "900" },
-  sectionHeading: { marginTop: 12, marginBottom: 24 },
   sectionTitle: { color: COLORS.navy, fontSize: 31, fontWeight: "900", letterSpacing: -1.7, marginBottom: 7 },
   sectionCopy: { color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 13, lineHeight: 19 },
   sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" },
@@ -633,45 +690,28 @@ const styles = StyleSheet.create({
   sportArrowButton: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: 16 },
   sportArrowButtonText: { color: "white", fontSize: 17, fontWeight: "900" },
   gameCardPressed: { transform: [{ scale: 0.97 }], opacity: 0.94 },
-  sportCardTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   sportMark: { width: 62, height: 62, alignItems: "center", justifyContent: "center", borderWidth: 2, backgroundColor: COLORS.surface },
-  sportIcon: { fontSize: 28, lineHeight: 32 },
-  sportMarkText: { fontSize: 7, fontWeight: "900", letterSpacing: 0.8, marginTop: 1 },
-  statusChip: { paddingHorizontal: 6, paddingVertical: 5, fontSize: 7, fontWeight: "900", letterSpacing: 0.6 },
-  sportCardTitle: { color: COLORS.navy, fontSize: 19, fontWeight: "900", letterSpacing: -0.7, marginTop: 18 },
-  sportCardFormats: { color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 11, lineHeight: 16, marginTop: 5 },
-  sportCardFooter: { marginTop: "auto", paddingTop: 13, borderTopWidth: 1, borderTopColor: COLORS.line, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  enterText: { color: COLORS.navy, fontSize: 8, fontWeight: "900", letterSpacing: 0.6 },
-  enterArrow: { color: COLORS.navy, fontSize: 18, fontWeight: "900" },
-  backLink: { color: COLORS.muted, fontSize: 9, fontWeight: "900", letterSpacing: 0.6, paddingVertical: 12 },
   backButton: { alignSelf: "flex-start", minHeight: 48, flexDirection: "row", alignItems: "center", gap: 9, paddingRight: 14, marginVertical: 6, borderRadius: 24, backgroundColor: COLORS.surface, shadowColor: COLORS.navy, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.13, shadowRadius: 7, elevation: 3 },
   backButtonIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: COLORS.gold },
   backButtonText: { color: COLORS.navy, fontSize: 9, fontWeight: "900", letterSpacing: 0.75 },
   backButtonPressed: { transform: [{ scale: 0.96 }], opacity: 0.9 },
   sportHero: { flexDirection: "row", alignItems: "center", gap: 20, paddingVertical: 24 },
   sportHeroGame: { position: "relative", overflow: "hidden", minHeight: 245, paddingHorizontal: 22, marginTop: 4, borderRadius: 30, shadowColor: "#09051f", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.34, shadowRadius: 18, elevation: 7 },
+  sportStartNow: { marginTop: 14, marginBottom: 4 },
   heroOrb: { position: "absolute", width: 170, height: 170, borderWidth: 34, borderColor: "rgba(255,255,255,.11)", borderRadius: 85 },
   heroOrbOne: { top: -82, right: -38 },
   heroOrbTwo: { bottom: -110, left: 52 },
   sportMarkLarge: { width: 82, height: 82, alignItems: "center", justifyContent: "center", borderWidth: 2 },
-  sportMarkTextLarge: { fontSize: 22, fontWeight: "900" },
   sportMarkHero: { zIndex: 2, width: 92, height: 92, borderRadius: 28, transform: [{ rotate: "-5deg" }], backgroundColor: COLORS.gold, borderColor: "rgba(255,255,255,.75)", shadowColor: COLORS.navy, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.27, shadowRadius: 12 },
-  sportHeroIcon: { fontSize: 39, lineHeight: 44 },
-  sportMarkHeroText: { color: COLORS.navy, fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
   sportHeroCopy: { flex: 1 },
   sportHeroKicker: { color: "rgba(255,255,255,.8)", fontSize: 8, fontWeight: "900", letterSpacing: 1.4, marginBottom: 7 },
   sportTitle: { color: COLORS.navy, fontSize: 43, fontWeight: "900", letterSpacing: -2.7, lineHeight: 46 },
   sportTitleLight: { color: "white", textShadowColor: "rgba(18,35,59,.32)", textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0 },
-  sportNote: { color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 13, lineHeight: 19, marginTop: 6 },
   sportNoteLight: { maxWidth: 700, color: "rgba(255,255,255,.9)", fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 12, lineHeight: 18, marginTop: 6 },
   heroScoreRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 16 },
   heroScorePill: { minWidth: 78, paddingHorizontal: 10, paddingVertical: 9, borderWidth: 1, borderColor: "rgba(255,255,255,.35)", borderRadius: 14, backgroundColor: "rgba(18,35,59,.22)" },
   heroScoreValue: { color: COLORS.gold, fontSize: 15, fontWeight: "900" },
   heroScoreLabel: { color: "white", fontSize: 6, fontWeight: "900", letterSpacing: 0.65, marginTop: 2 },
-  variantList: { gap: 7, paddingVertical: 10 },
-  variantChip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 13, borderWidth: 1, borderColor: COLORS.line, borderRadius: 20, backgroundColor: COLORS.surface },
-  variantText: { color: COLORS.navy, fontSize: 9, fontWeight: "800" },
-  lessonCard: { maxWidth: 650, padding: 22, marginTop: 24, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surface, shadowColor: COLORS.navy, shadowOffset: { width: 6, height: 6 }, shadowOpacity: 0.12, shadowRadius: 0 },
   lessonTitle: { color: COLORS.navy, fontSize: 27, fontWeight: "900", letterSpacing: -1.2, marginBottom: 7 },
   lessonText: { color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 14, lineHeight: 21, marginBottom: 22 },
   pathTabs: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 19, marginBottom: 20 },
@@ -739,7 +779,6 @@ const styles = StyleSheet.create({
   lockMark: { color: COLORS.line, fontSize: 13 },
   quizHeader: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: COLORS.line },
   quizHeaderGame: { borderBottomColor: "rgba(255,255,255,.14)", backgroundColor: "#100b3d" },
-  exitText: { color: COLORS.muted, fontSize: 8, fontWeight: "900", letterSpacing: 0.5 },
   progressTrack: { flex: 1, height: 7, overflow: "hidden", backgroundColor: COLORS.surface2 },
   progressTrackGame: { height: 9, borderRadius: 5, backgroundColor: "rgba(255,255,255,.18)" },
   progressFill: { height: "100%", backgroundColor: COLORS.teal },
@@ -824,10 +863,6 @@ const styles = StyleSheet.create({
   playerStripeText: { color: "white", fontSize: 7, fontWeight: "900", letterSpacing: 0.8 },
   profileForm: { flex: 1.25, padding: 22, borderWidth: 0, borderRadius: 28, backgroundColor: COLORS.surface, shadowColor: COLORS.navy, shadowOffset: { width: 0, height: 9 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 4 },
   profileTitle: { color: COLORS.navy, fontSize: 27, fontWeight: "900", letterSpacing: -1.2, marginBottom: 8 },
-  compactAgeList: { gap: 7, paddingBottom: 14 },
-  compactAge: { minWidth: 57, minHeight: 42, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surface2 },
-  compactAgeActive: { borderColor: COLORS.teal, backgroundColor: COLORS.teal },
-  compactAgeText: { color: COLORS.navy, fontSize: 9, fontWeight: "900" },
   leagueButton: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.line, borderRadius: 19, backgroundColor: COLORS.surface },
   leagueButtonGame: { borderColor: "rgba(255,255,255,.22)", backgroundColor: "rgba(255,255,255,.12)" },
   privacySafe: { flex: 1, backgroundColor: "#100b3d" },
@@ -860,13 +895,34 @@ const styles = StyleSheet.create({
   motionCopy: { marginBottom: 10 },
   motionKicker: { fontSize: 7, fontWeight: "900", letterSpacing: 0.8 },
   motionTitle: { color: COLORS.navy, fontSize: 17, fontWeight: "900", marginTop: 3 },
-  motionText: { color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 10, marginTop: 3 },
-  motionField: { position: "relative", height: 98, overflow: "hidden", borderWidth: 2, borderRadius: 18, backgroundColor: "rgba(255,255,255,.65)" },
-  motionCenterLine: { position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, opacity: 0.25 },
-  motionPlayer: { position: "absolute", width: 18, height: 18, borderWidth: 3, borderColor: "white", borderRadius: 9 },
-  motionBall: { position: "absolute", left: 76, top: 48, width: 29, height: 29, alignItems: "center", justifyContent: "center", borderRadius: 15, backgroundColor: "white", shadowColor: COLORS.navy, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 5 },
-  motionBallText: { fontSize: 7, fontWeight: "900" },
-  motionTarget: { position: "absolute", right: 10, top: 30, color: COLORS.gold, fontSize: 26 },
+  motionText: { color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 11, lineHeight: 16, marginTop: 3 },
+  motionVideoFrame: { position: "relative", width: "100%", aspectRatio: 16 / 9, overflow: "hidden", borderRadius: 18, backgroundColor: COLORS.navy },
+  motionVideo: { width: "100%", height: "100%" },
+  motionVideoControl: { position: "absolute", right: 10, bottom: 10, width: 38, height: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,.45)", borderRadius: 19, backgroundColor: "rgba(9,5,31,.72)" },
+  motionCredit: { marginTop: 7, color: COLORS.muted, fontSize: 7, fontWeight: "900", letterSpacing: 0.65, textAlign: "right" },
+  motionVideoPlaceholder: { minHeight: 140, alignItems: "center", justifyContent: "center", padding: 22, borderWidth: 2, borderColor: "rgba(18,35,59,.12)", borderStyle: "dashed", borderRadius: 18, backgroundColor: "rgba(255,255,255,.68)" },
+  motionVideoPlaceholderTitle: { marginTop: 8, color: COLORS.navy, fontSize: 14, fontWeight: "900" },
+  motionVideoPlaceholderText: { maxWidth: 300, marginTop: 4, color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 10, lineHeight: 15, textAlign: "center" },
+  primerHeaderDots: { flex: 1, maxWidth: 220, flexDirection: "row", gap: 6, marginHorizontal: 12 },
+  primerHeaderDot: { flex: 1, height: 6, borderRadius: 99, backgroundColor: "rgba(255,255,255,.22)" },
+  primerContent: { flexGrow: 1, alignItems: "center", paddingHorizontal: 14, paddingTop: 22, paddingBottom: 48 },
+  primerStage: { width: "100%", maxWidth: 760, padding: 22, borderWidth: 2, borderColor: "rgba(255,255,255,.2)", borderRadius: 30, backgroundColor: "rgba(255,253,247,.98)", shadowColor: "#09051f", shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 8 },
+  primerMark: { width: 78, height: 78, alignItems: "center", justifyContent: "center", borderWidth: 4, borderColor: "white", borderRadius: 24, transform: [{ rotate: "-3deg" }], shadowColor: COLORS.navy, shadowOffset: { width: 5, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 5 },
+  primerKicker: { marginTop: 24, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
+  primerSport: { marginTop: 3, color: COLORS.muted, fontSize: 10, fontWeight: "800" },
+  primerTitle: { marginTop: 15, color: COLORS.navy, fontSize: 34, fontWeight: "900", letterSpacing: -1.6, lineHeight: 37 },
+  primerBody: { marginTop: 14, color: "#4e5964", fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 16, lineHeight: 25 },
+  primerTerms: { gap: 9, marginTop: 21 },
+  primerTerm: { padding: 13, borderLeftWidth: 5, borderRadius: 13, backgroundColor: "white", shadowColor: COLORS.navy, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 7, elevation: 2 },
+  primerTermName: { color: COLORS.navy, fontSize: 13, fontWeight: "900" },
+  primerTermMeaning: { marginTop: 4, color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 12, lineHeight: 18 },
+  primerCoach: { flexDirection: "row", alignItems: "flex-end", marginTop: 22 },
+  primerCoachBubble: { flex: 1, marginBottom: 7, marginLeft: -5, padding: 13, borderWidth: 2, borderColor: "rgba(18,35,59,.12)", borderRadius: 18, borderBottomLeftRadius: 5, backgroundColor: "white" },
+  primerCoachTitle: { color: COLORS.teal, fontSize: 8, fontWeight: "900", letterSpacing: 0.9 },
+  primerCoachText: { marginTop: 4, color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 11, lineHeight: 16 },
+  primerActions: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 15, marginTop: 20 },
+  primerPrevious: { color: COLORS.navy, fontSize: 10, fontWeight: "900", textDecorationLine: "underline" },
+  primerPrimary: { flex: 1, maxWidth: 390 },
   leagueHero: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 22, borderRadius: 28, backgroundColor: "rgba(18,35,59,.9)" },
   leagueKicker: { color: COLORS.gold, fontSize: 8, fontWeight: "900", letterSpacing: 1.2 },
   leagueTitle: { color: "white", fontSize: 38, fontWeight: "900", letterSpacing: -2.4, lineHeight: 36, marginTop: 6 },
@@ -897,4 +953,6 @@ const styles = StyleSheet.create({
   lockedAge: { flexDirection: "row", alignItems: "center", gap: 10, padding: 11, marginBottom: 12, borderRadius: 16, backgroundColor: COLORS.surface2 },
   lockedAgeValue: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: COLORS.teal, color: "white", fontSize: 10, fontWeight: "900" },
   lockedAgeText: { flex: 1, color: COLORS.muted, fontSize: 9, lineHeight: 13 },
+  changeAgeButton: { paddingHorizontal: 10, paddingVertical: 9, borderWidth: 1, borderColor: COLORS.teal, borderRadius: 11, backgroundColor: COLORS.surface },
+  changeAgeButtonText: { color: COLORS.teal, fontSize: 8, fontWeight: "900", letterSpacing: 0.5 },
 });
