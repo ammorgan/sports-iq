@@ -7,6 +7,7 @@ import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  AccessibilityInfo,
   Easing,
   Image,
   ImageBackground,
@@ -21,8 +22,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { beginnerGuideFor } from "../app/beginner-guides";
-import { arrangeChallengeOptions, buildPositionModule, generalModulesForSport, positionModuleId, sportIntroModuleId, SPORTS, type Challenge, type LearningModule, type Position, type Sport } from "../app/learning-data";
+import { PILOT_SPORT_IDS, sourcesForSport } from "../app/content-registry";
+import { arrangeChallengeOptions, buildPositionModule, generalModulesForSport, positionModuleId, SPORTS, type Challenge, type LearningModule, type Position, type Sport } from "../app/learning-data";
+import { moduleGuideFor } from "../app/module-guides";
 import { sportClipFor, type SportClip } from "../app/sport-clips";
 
 const COLORS = {
@@ -122,16 +124,23 @@ function avatarFor(id: string) {
 
 function MiniCharacter({ id, size = 120, animated = false }: { id: string; size?: number; animated?: boolean }) {
   const [bob] = useState(() => new Animated.Value(0));
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
-    if (!animated) return;
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!animated || reduceMotion) { bob.setValue(0); return; }
     const motion = Animated.loop(Animated.sequence([
       Animated.timing(bob, { toValue: -7, duration: 1050, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       Animated.timing(bob, { toValue: 0, duration: 1050, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
     ]));
     motion.start();
     return () => motion.stop();
-  }, [animated, bob]);
+  }, [animated, bob, reduceMotion]);
 
   return <Animated.Image source={avatarFor(id).source} resizeMode="contain" style={{ width: size, height: size, transform: [{ translateY: bob }] }} />;
 }
@@ -145,7 +154,7 @@ function Logo({ size = 56 }: { size?: number }) {
 }
 
 function PrimaryButton({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryButton, pressed && !disabled && styles.pressed, disabled && styles.disabled]}><Text style={styles.primaryButtonText}>{label}</Text><Text style={styles.primaryArrow}>→</Text></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryButton, pressed && !disabled && styles.pressed, disabled && styles.disabled]}><Text style={styles.primaryButtonText}>{label}</Text><Text aria-hidden style={styles.primaryArrow}>→</Text></Pressable>;
 }
 
 function BackButton({ label, onPress }: { label: string; onPress: () => void }) {
@@ -159,7 +168,7 @@ function QuestionVisual({ question, sport }: { question: Challenge; sport: Sport
         : question.conceptId.includes("scor") ? "score"
           : question.conceptId.includes("clock") || question.conceptId.includes("format") ? "clock"
             : "decision";
-  return <View accessibilityLabel={`Visual clue for ${question.prompt}`} style={[styles.questionVisual, { backgroundColor: sport.softColor, borderColor: sport.color }]}>
+  return <View accessible accessibilityRole="image" accessibilityLabel={`Visual clue for ${question.prompt}`} style={[styles.questionVisual, { backgroundColor: sport.softColor, borderColor: sport.color }]}>
     <View style={[styles.questionVisualSport, { backgroundColor: sport.color }]}><MaterialCommunityIcons name={sport.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={34} color="white" /></View>
     {visualType === "players" && <View style={styles.visualPlayerRow}>{[0, 1, 2].map((item) => <MaterialCommunityIcons key={item} name="account" size={35} color={sport.color} />)}<Text style={[styles.visualQuestionMark, { color: sport.color }]}>?</Text></View>}
     {visualType === "arena" && <View style={[styles.visualArena, { borderColor: sport.color }]}><View style={[styles.visualArenaLine, { backgroundColor: sport.color }]} /><View style={[styles.visualArenaDot, { backgroundColor: sport.color }]} /></View>}
@@ -192,7 +201,7 @@ function QuizTimer({ duration, paused, onExpire }: { duration: number | null; pa
   }, [paused, seconds]);
 
   if (seconds === null) return null;
-  return <View style={[styles.timer, seconds <= 10 && styles.timerLow]}><Text style={[styles.timerValue, seconds <= 10 && styles.timerValueLow]}>{seconds}</Text><Text style={styles.timerLabel}>SEC</Text></View>;
+  return <View accessible accessibilityLabel={`${seconds} seconds remaining`} style={[styles.timer, seconds <= 10 && styles.timerLow]}><Text style={[styles.timerValue, seconds <= 10 && styles.timerValueLow]}>{seconds}</Text><Text style={styles.timerLabel}>SEC</Text></View>;
 }
 
 function MobilePrivacyGate({ onContinue }: { onContinue: (result: { ageBand: AgeBand; accountKind: AccountKind; consentState: ConsentState }) => void }) {
@@ -208,7 +217,7 @@ function MobilePrivacyGate({ onContinue }: { onContinue: (result: { ageBand: Age
         <Text style={styles.privacyKicker}>FIRST, SET THE RIGHT PLAYBOOK</Text>
         <Text style={styles.privacyTitle}>HOW OLD IS{`\n`}THE <Text style={styles.privacyTitleAccent}>PLAYER?</Text></Text>
         <Text style={styles.privacyCopy}>An adult or the player should choose the real age range. We save the range—not a birthday.</Text>
-        <View style={styles.privacyAgeGrid}>{AGE_BANDS.map((band) => <Pressable key={band.value} onPress={() => setAgeBand(band.value)} style={[styles.privacyAgeCard, ageBand === band.value && styles.privacyAgeCardActive]}><Text style={[styles.privacyAgeValue, ageBand === band.value && styles.privacyChoiceActive]}>AGES {band.value}</Text><Text style={[styles.privacyAgeTitle, ageBand === band.value && styles.privacyChoiceActive]}>{band.title}</Text><Text style={[styles.privacyAgeNote, ageBand === band.value && styles.privacyChoiceActive]}>{band.note}</Text><Text style={[styles.privacyAgeArrow, ageBand === band.value && styles.privacyChoiceActive]}>{ageBand === band.value ? "✓" : "→"}</Text></Pressable>)}</View>
+        <View style={styles.privacyAgeGrid}>{AGE_BANDS.map((band) => <Pressable accessibilityRole="button" accessibilityState={{ selected: ageBand === band.value }} accessibilityLabel={`Ages ${band.value}, ${band.title}. ${band.note}`} key={band.value} onPress={() => setAgeBand(band.value)} style={[styles.privacyAgeCard, ageBand === band.value && styles.privacyAgeCardActive]}><Text style={[styles.privacyAgeValue, ageBand === band.value && styles.privacyChoiceActive]}>AGES {band.value}</Text><Text style={[styles.privacyAgeTitle, ageBand === band.value && styles.privacyChoiceActive]}>{band.title}</Text><Text style={[styles.privacyAgeNote, ageBand === band.value && styles.privacyChoiceActive]}>{band.note}</Text><Text style={[styles.privacyAgeArrow, ageBand === band.value && styles.privacyChoiceActive]}>{ageBand === band.value ? "✓" : "→"}</Text></Pressable>)}</View>
         <PrimaryButton label="CONTINUE" onPress={() => setStep("account")} disabled={!ageBand} />
         <Text style={styles.privacyFine}>Age controls reading, visuals, and timer. Sport experience controls difficulty.</Text>
       </> : isChild ? <>
@@ -231,7 +240,7 @@ function MobilePrivacyGate({ onContinue }: { onContinue: (result: { ageBand: Age
 }
 
 function SportClipVideoMobile({ clip, sport, source }: { clip: SportClip; sport: Sport; source: VideoSource }) {
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
   const start = clip.startSeconds ?? 0;
   const end = start + clip.durationSeconds;
@@ -239,14 +248,14 @@ function SportClipVideoMobile({ clip, sport, source }: { clip: SportClip; sport:
     nextPlayer.muted = true;
     nextPlayer.timeUpdateEventInterval = 0.25;
     nextPlayer.currentTime = start;
-    nextPlayer.play();
+    nextPlayer.pause();
   });
 
   useEffect(() => {
     const timeSubscription = player.addListener("timeUpdate", ({ currentTime }) => {
       if (currentTime >= end) {
         player.currentTime = start;
-        player.play();
+        player.pause();
       }
     });
     const playSubscription = player.addListener("playingChange", ({ isPlaying }) => setPlaying(isPlaying));
@@ -271,7 +280,7 @@ function SportClipVideoMobile({ clip, sport, source }: { clip: SportClip; sport:
 function SportMotionPreviewMobile({ sport }: { sport: Sport }) {
   const clip = sportClipFor(sport.id);
   const source = MOBILE_LOCAL_SPORT_CLIPS[sport.id] ?? clip?.videoUrl;
-  return <View style={[styles.motionPreview, { borderColor: sport.color, backgroundColor: sport.softColor }]}><View style={styles.motionCopy}><Text style={[styles.motionKicker, { color: sport.color }]}>8-SECOND SPORT SNAPSHOT</Text><Text style={styles.motionTitle}>See how {sport.name} is played</Text><Text style={styles.motionText}>{clip?.cue ?? `We are reviewing a real ${sport.name} clip so this preview teaches the correct sport.`}</Text></View>{clip && source ? <><SportClipVideoMobile key={clip.videoUrl} clip={clip} sport={sport} source={source} /><Text style={styles.motionCredit}>FOOTAGE · {clip.sourceName.toUpperCase()}</Text></> : <View style={styles.motionVideoPlaceholder}><MaterialCommunityIcons name="video-outline" size={35} color={sport.color} /><Text style={styles.motionVideoPlaceholderTitle}>Real game clip coming next</Text><Text style={styles.motionVideoPlaceholderText}>We will only show footage that clearly matches {sport.name}.</Text></View>}</View>;
+  return <View style={[styles.motionPreview, { borderColor: sport.color, backgroundColor: sport.softColor }]}><View style={styles.motionCopy}><Text style={[styles.motionKicker, { color: sport.color }]}>8-SECOND SPORT SNAPSHOT</Text><Text style={styles.motionTitle}>See how {sport.name} is played</Text><Text style={styles.motionText}>{clip?.cue ?? `We are reviewing a real ${sport.name} clip so this preview teaches the correct sport.`}</Text></View>{clip && source ? <><SportClipVideoMobile key={clip.videoUrl} clip={clip} sport={sport} source={source} /><Text style={styles.motionCredit}>FOOTAGE · {clip.sourceName.toUpperCase()} · {clip.licenseName.toUpperCase()}</Text></> : <View style={styles.motionVideoPlaceholder}><MaterialCommunityIcons name="video-outline" size={35} color={sport.color} /><Text style={styles.motionVideoPlaceholderTitle}>Real game clip coming next</Text><Text style={styles.motionVideoPlaceholderText}>We will only show footage that clearly matches {sport.name}.</Text></View>}</View>;
 }
 
 function AvatarPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
@@ -315,6 +324,8 @@ function RepQuestApp() {
   const cardWidth = isTablet ? (contentWidth - 72) / 3 : (contentWidth - 52) / 2;
   const agePath = AGE_BANDS.find((band) => band.value === profile.ageBand) ?? AGE_BANDS[1];
   const question = quiz[questionIndex];
+  const pilotSports = SPORTS.filter((item) => (PILOT_SPORT_IDS as readonly string[]).includes(item.id));
+  const moreSports = SPORTS.filter((item) => !(PILOT_SPORT_IDS as readonly string[]).includes(item.id));
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
@@ -372,6 +383,18 @@ function RepQuestApp() {
     setScreen("sport");
   };
 
+  const sportCard = (item: Sport) => {
+    const missionIds = [...generalModulesForSport(item).map((module) => module.id), ...item.positions.map((position) => positionModuleId(item.id, position.name))];
+    const completedMissions = missionIds.filter((id) => profile.completedModules.includes(id)).length;
+    const percent = Math.round((completedMissions / missionIds.length) * 100);
+    const progressLabel = completedMissions === 0 ? "Not started" : completedMissions === missionIds.length ? "Complete" : `${completedMissions}/${missionIds.length} missions`;
+    return <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Open ${item.name}, ${progressLabel}`} onPress={() => openSport(item)} style={({ pressed }) => [styles.sportCard, styles.sportCardSimple, { width: cardWidth, backgroundColor: item.softColor }, pressed && styles.gameCardPressed]}>
+      <View style={styles.sportCardSimpleTop}><View style={[styles.sportMark, styles.sportMarkSimple, { borderColor: item.color }]}><MaterialCommunityIcons name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={39} color={item.color} /></View>{completedMissions === missionIds.length && <View style={[styles.sportCompleteBadge, { backgroundColor: item.color }]}><Text style={styles.sportCompleteBadgeText}>✓</Text></View>}</View>
+      <Text style={styles.sportCardSimpleTitle}>{item.name}</Text>
+      <View style={styles.sportCardSimpleBottom}><View style={styles.sportProgressCopy}><Text style={[styles.sportProgressLabel, { color: item.color }]}>{progressLabel}</Text><View style={styles.sportProgressTrack}><View style={[styles.sportProgressFill, { width: `${percent}%`, backgroundColor: item.color }]} /></View></View><View style={[styles.sportArrowButton, { backgroundColor: item.color }]}><Text style={styles.sportArrowButtonText}>→</Text></View></View>
+    </Pressable>;
+  };
+
   const startModule = (learningModule: LearningModule) => {
     setActiveModule(learningModule);
     const ageAppropriateChallenges = profile.ageBand === "7-9"
@@ -384,7 +407,7 @@ function RepQuestApp() {
     setCorrectCount(0);
     setQuizXp(0);
     setPrimerIndex(0);
-    setScreen(learningModule.pathway === "general" && learningModule.id === sportIntroModuleId(learningModule.sportId) ? "primer" : "quiz");
+    setScreen(moduleGuideFor(learningModule, sport, profile.ageBand) ? "primer" : "quiz");
   };
 
   const chooseOption = (option: string) => {
@@ -456,7 +479,8 @@ function RepQuestApp() {
   const header = <View style={[styles.header, gameChrome && styles.headerGame]}><Pressable accessibilityLabel="Return to RepQuest home" onPress={() => setScreen("home")}><Logo /></Pressable><View style={styles.headerActions}><Pressable accessibilityLabel="Open XP league" onPress={() => setScreen("league")} style={[styles.leagueButton, gameChrome && styles.leagueButtonGame]}><MaterialCommunityIcons name="trophy-variant" size={18} color={gameChrome ? COLORS.gold : COLORS.teal} /></Pressable><Pressable accessibilityLabel="Open XP league" onPress={() => setScreen("league")} style={[styles.xpPill, gameChrome && styles.xpPillGame]}><Text style={styles.xpLabel}>XP</Text><Text style={[styles.xpValue, gameChrome && styles.xpValueGame]}>{profile.xp}</Text></Pressable>{/* Sound controls stay hidden until RepQuest has a complete audio experience. */}<Pressable accessibilityLabel="Open profile" onPress={() => { setDraftName(profile.name); setDraftAge(profile.ageBand); setDraftAvatar(profile.avatarId); setScreen("profile"); }} style={[styles.headerAvatar, gameChrome && styles.headerAvatarGame]}><GameAvatar id={profile.avatarId} size={42} /></Pressable></View></View>;
 
   if (screen === "primer" && activeModule) {
-    const guide = beginnerGuideFor(activeModule.sportId);
+    const guide = moduleGuideFor(activeModule, sport, profile.ageBand);
+    const sources = sourcesForSport(activeModule.sportId);
     const lesson = guide?.lessons[primerIndex];
     if (guide && lesson) {
       const isLast = primerIndex === guide.lessons.length - 1;
@@ -471,6 +495,7 @@ function RepQuestApp() {
               <Text style={[styles.primerTitle, isTablet && styles.questionTitleTablet]}>{lesson.title}</Text>
               <Text style={styles.primerBody}>{lesson.body}</Text>
               {lesson.terms && <View style={styles.primerTerms}>{lesson.terms.map((item) => <View key={item.term} style={[styles.primerTerm, { borderLeftColor: sport.color }]}><Text style={styles.primerTermName}>{item.term}</Text><Text style={styles.primerTermMeaning}>{item.meaning}</Text></View>)}</View>}
+              {isLast && sources.length > 0 && <View style={styles.lessonSources} accessibilityLabel={`Lesson sources: ${sources.map((source) => source.authority).join(", ")}`}><Text style={styles.lessonSourcesTitle}>SOURCE CHECKED</Text>{sources.map((source) => <Text key={source.id} style={styles.lessonSourcesText}>{source.authority} · {source.title}</Text>)}</View>}
               <View style={styles.primerCoach}><GameAvatar id="avatar-12" size={98} animated /><View style={styles.primerCoachBubble}><Text style={styles.primerCoachTitle}>{primerIndex === 0 ? "START HERE" : isLast ? "READY FOR A REP" : "YOU’VE GOT THIS"}</Text><Text style={styles.primerCoachText}>{primerIndex === 0 ? guide.welcome : isLast ? "The quiz checks what this playbook just taught. It is always okay to learn from a miss." : "Take your time. The words will make more sense each time you see the sport."}</Text></View></View>
               <View style={styles.primerActions}>{primerIndex > 0 && <Pressable onPress={() => setPrimerIndex((index) => index - 1)}><Text style={styles.primerPrevious}>← PREVIOUS</Text></Pressable>}<View style={styles.primerPrimary}><PrimaryButton label={isLast ? "TRY THE QUICK CHECK" : "KEEP LEARNING"} onPress={() => isLast ? setScreen("quiz") : setPrimerIndex((index) => index + 1)} /></View></View>
             </View>
@@ -499,8 +524,8 @@ function RepQuestApp() {
         <Text style={[styles.questionTitle, isTablet && styles.questionTitleTablet]}>{question.prompt}</Text>
         <Text style={styles.answerInstruction}>{instruction}</Text>
         {question.type === "ordering" && selected.length > 0 && !feedback && <View style={styles.orderStrip}><Text style={styles.orderStripLabel}>YOUR ORDER</Text><Text style={styles.orderStripValue}>{selected.map((item, index) => `${index + 1}. ${item}`).join("  →  ")}</Text><Pressable onPress={() => setSelected([])}><Text style={styles.resetOrder}>RESET</Text></Pressable></View>}
-        <View style={[styles.answerGrid, isTablet && styles.answerGridTablet]}>{question.options.map((option, index) => { const isSelected = selected.includes(option); const selectedOrder = selected.indexOf(option); const isCorrect = !!feedback && expected.includes(option); const isWrong = !!feedback && isSelected && !expected.includes(option); return <Pressable key={option} disabled={!!feedback} onPress={() => chooseOption(option)} style={({ pressed }) => [styles.answerCard, isSelected && styles.answerSelected, isCorrect && styles.answerCorrect, isWrong && styles.answerWrong, pressed && !feedback && styles.pressed]}><View style={[styles.answerLetter, isSelected && styles.answerLetterSelected]}><Text style={[styles.answerLetterText, isSelected && styles.answerLetterTextSelected]}>{question.type === "ordering" && isSelected ? selectedOrder + 1 : String.fromCharCode(65 + index)}</Text></View><Text style={styles.answerText}>{option}</Text>{isCorrect && <Text style={styles.answerMark}>✓</Text>}{isWrong && <Text style={styles.answerMark}>×</Text>}</Pressable>; })}</View>
-        {!feedback ? <PrimaryButton label={question.type === "ordering" ? "LOCK IN MY ORDER" : question.type === "multi" ? "CHECK MY PICKS" : "CHECK MY ANSWER"} onPress={checkAnswer} disabled={!selectionComplete} /> : <View style={[styles.feedback, feedback.correct ? styles.feedbackCorrect : styles.feedbackWrong]}>{showFeedbackCoach && <FeedbackCoach correct={feedback.correct} timedOut={feedback.timedOut} />}<Text style={styles.feedbackLabel}>{feedback.correct ? "THAT’S THE RIGHT CALL" : feedback.timedOut ? "TIME’S UP — LET’S LEARN IT" : "LET’S LEARN THIS ONE"}</Text><Text style={styles.feedbackText}>{question.explanation}</Text>{!feedback.correct && <Text style={styles.correctAnswer}>Correct answer: {expected.join(question.type === "ordering" ? " → " : " · ")}</Text>}<PrimaryButton label={questionIndex === quiz.length - 1 ? "FINISH MISSION" : "NEXT QUESTION"} onPress={advance} /></View>}
+        <View style={[styles.answerGrid, isTablet && styles.answerGridTablet]}>{question.options.map((option, index) => { const isSelected = selected.includes(option); const selectedOrder = selected.indexOf(option); const isCorrect = !!feedback && expected.includes(option); const isWrong = !!feedback && isSelected && !expected.includes(option); return <Pressable accessibilityRole="button" accessibilityState={{ selected: isSelected, disabled: !!feedback }} accessibilityLabel={`${String.fromCharCode(65 + index)}. ${option}${isCorrect ? ", correct answer" : isWrong ? ", incorrect selection" : ""}`} key={option} disabled={!!feedback} onPress={() => chooseOption(option)} style={({ pressed }) => [styles.answerCard, isSelected && styles.answerSelected, isCorrect && styles.answerCorrect, isWrong && styles.answerWrong, pressed && !feedback && styles.pressed]}><View style={[styles.answerLetter, isSelected && styles.answerLetterSelected]}><Text style={[styles.answerLetterText, isSelected && styles.answerLetterTextSelected]}>{question.type === "ordering" && isSelected ? selectedOrder + 1 : String.fromCharCode(65 + index)}</Text></View><Text style={styles.answerText}>{option}</Text>{isCorrect && <Text style={styles.answerMark}>✓</Text>}{isWrong && <Text style={styles.answerMark}>×</Text>}</Pressable>; })}</View>
+        {!feedback ? <PrimaryButton label={question.type === "ordering" ? "LOCK IN MY ORDER" : question.type === "multi" ? "CHECK MY PICKS" : "CHECK MY ANSWER"} onPress={checkAnswer} disabled={!selectionComplete} /> : <View accessibilityLiveRegion="polite" accessible style={[styles.feedback, feedback.correct ? styles.feedbackCorrect : styles.feedbackWrong]}>{showFeedbackCoach && <FeedbackCoach correct={feedback.correct} timedOut={feedback.timedOut} />}<Text style={styles.feedbackLabel}>{feedback.correct ? "THAT’S THE RIGHT CALL" : feedback.timedOut ? "TIME’S UP — LET’S LEARN IT" : "LET’S LEARN THIS ONE"}</Text><Text style={styles.feedbackText}>{question.explanation}</Text>{!feedback.correct && <Text style={styles.correctAnswer}>Correct answer: {expected.join(question.type === "ordering" ? " → " : " · ")}</Text>}<PrimaryButton label={questionIndex === quiz.length - 1 ? "FINISH MISSION" : "NEXT QUESTION"} onPress={advance} /></View>}
         </View>
       </ScrollView>
       </ImageBackground>
@@ -554,12 +579,12 @@ function RepQuestApp() {
       <SportMotionPreviewMobile sport={sport} />
 
       <View style={styles.pathTabs}>
-        <Pressable onPress={() => { setPathway("general"); setSelectedPosition(null); }} style={[styles.pathTab, pathway === "general" && styles.pathTabActive, pathway === "general" && { borderColor: sport.color }]}><View style={[styles.pathTabNumber, pathway === "general" && { backgroundColor: sport.color }]}><Text style={[styles.pathTabNumberText, pathway === "general" && styles.choiceTextActive]}>01</Text></View><View style={styles.pathTabCopy}><Text style={[styles.pathTabTitle, pathway === "general" && { color: sport.color }]}>GENERAL SPORT IQ</Text><Text style={styles.pathTabNote}>Rules, scoring & game shape</Text></View><Text style={styles.pathTabArrow}>→</Text></Pressable>
-        <Pressable onPress={() => setPathway("position")} style={[styles.pathTab, pathway === "position" && styles.pathTabActive, pathway === "position" && { borderColor: sport.color }]}><View style={[styles.pathTabNumber, pathway === "position" && { backgroundColor: sport.color }]}><Text style={[styles.pathTabNumberText, pathway === "position" && styles.choiceTextActive]}>02</Text></View><View style={styles.pathTabCopy}><Text style={[styles.pathTabTitle, pathway === "position" && { color: sport.color }]}>{pathLabel} IQ</Text><Text style={styles.pathTabNote}>{positionsUnlocked ? `${completedPositionCount}/${sport.positions.length} rooms cleared` : "Finish beginner path to unlock"}</Text></View><Text style={styles.pathTabArrow}>{positionsUnlocked ? "→" : "◆"}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: pathway === "general" }} accessibilityLabel={`Learn the game, ${completedGeneralCount} of ${generalModules.length} steps complete`} onPress={() => { setPathway("general"); setSelectedPosition(null); }} style={[styles.pathTab, pathway === "general" && styles.pathTabActive, pathway === "general" && { borderColor: sport.color }]}><View style={[styles.pathTabNumber, pathway === "general" && { backgroundColor: sport.color }]}><Text style={[styles.pathTabNumberText, pathway === "general" && styles.choiceTextActive]}>01</Text></View><View style={styles.pathTabCopy}><Text style={[styles.pathTabTitle, pathway === "general" && { color: sport.color }]}>LEARN THE GAME</Text><Text style={styles.pathTabNote}>Rules, scoring & who does what</Text></View><Text style={styles.pathTabArrow}>→</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: pathway === "position" }} accessibilityLabel={`${pathLabel} IQ, ${positionsUnlocked ? "open" : "locked until the beginner path is complete"}`} onPress={() => setPathway("position")} style={[styles.pathTab, pathway === "position" && styles.pathTabActive, pathway === "position" && { borderColor: sport.color }]}><View style={[styles.pathTabNumber, pathway === "position" && { backgroundColor: sport.color }]}><Text style={[styles.pathTabNumberText, pathway === "position" && styles.choiceTextActive]}>02</Text></View><View style={styles.pathTabCopy}><Text style={[styles.pathTabTitle, pathway === "position" && { color: sport.color }]}>{pathLabel} IQ</Text><Text style={styles.pathTabNote}>{positionsUnlocked ? `${completedPositionCount}/${sport.positions.length} rooms cleared` : "Finish beginner path to unlock"}</Text></View><Text style={styles.pathTabArrow}>{positionsUnlocked ? "→" : "◆"}</Text></Pressable>
       </View>
 
       {pathway === "general" ? <View>{generalModules.map((generalModule, index) => { const complete = profile.completedModules.includes(generalModule.id); const unlocked = index === 0 || profile.completedModules.includes(generalModules[index - 1].id); return <View key={generalModule.id} style={[styles.missionCard, { borderTopColor: sport.color, marginBottom: 14 }, !unlocked && styles.disabled]}><View style={styles.missionCardTop}><View><Text style={[styles.kicker, { color: sport.color }]}>STEP {index + 1} · BEGINNER PATH</Text><Text style={styles.lessonTitle}>{generalModule.title}</Text></View><View style={[styles.xpBurst, { backgroundColor: sport.color }]}><Text style={styles.xpBurstValue}>{complete ? "✓" : `0${index + 1}`}</Text><Text style={styles.xpBurstLabel}>{complete ? "DONE" : "STEP"}</Text></View></View><Text style={styles.lessonText}>{generalModule.description}</Text><PrimaryButton label={complete ? "PRACTICE AGAIN" : unlocked ? "START THIS STEP" : "FINISH THE STEP ABOVE"} onPress={() => unlocked && startModule(generalModule)} disabled={!unlocked} /></View>; })}</View>
-      : !positionsUnlocked ? <View style={styles.positionRoom}><Text style={[styles.kicker, { color: sport.color }]}>POSITION IQ</Text><Text style={styles.sectionTitle}>MEET THE GAME FIRST.</Text><Text style={styles.sectionCopy}>Finish the beginner path—including Meet the Positions—before choosing a specialized role.</Text><View style={{ marginTop: 18 }}><PrimaryButton label="CONTINUE BEGINNER PATH" onPress={() => { setPathway("general"); startModule(nextGeneralModule); }} /></View></View>
+      : !positionsUnlocked ? <View style={styles.positionRoom}><Text style={[styles.kicker, { color: sport.color }]}>{pathLabel} IQ</Text><Text style={styles.sectionTitle}>MEET THE GAME FIRST.</Text><Text style={styles.sectionCopy}>Finish the beginner path—including the role-group lesson—before choosing a specialized path.</Text><View style={{ marginTop: 18 }}><PrimaryButton label="CONTINUE BEGINNER PATH" onPress={() => { setPathway("general"); startModule(nextGeneralModule); }} /></View></View>
       : selectedPosition && positionModule ? <View style={styles.positionDetail}>
         <BackButton label="ALL PATHS" onPress={() => setSelectedPosition(null)} />
         <View style={[styles.positionHero, { backgroundColor: sport.color }]}><View style={styles.positionHeroBadge}><Text style={[styles.positionHeroInitials, { color: sport.color }]}>{selectedPosition.name.split(" ").map((part) => part[0]).join("").slice(0, 3)}</Text></View><View style={styles.positionHeroCopy}><Text style={styles.positionHeroGroup}>{selectedPosition.group.toUpperCase()} · LEVEL 1</Text><Text style={styles.positionHeroTitle}>{selectedPosition.name} IQ</Text><Text style={styles.positionHeroText}>Learn to {selectedPosition.focus} through real reads, responsibilities, and decisions.</Text></View></View>
@@ -583,17 +608,11 @@ function RepQuestApp() {
       </View>
       <View style={styles.homeGuidePlayer}><GameAvatar id={profile.avatarId} size={isTablet ? 150 : 118} animated /></View>
     </View>
-    <View style={styles.sportGrid}>{SPORTS.map((item) => {
-      const missionIds = [...generalModulesForSport(item).map((module) => module.id), ...item.positions.map((position) => positionModuleId(item.id, position.name))];
-      const completedMissions = missionIds.filter((id) => profile.completedModules.includes(id)).length;
-      const percent = Math.round((completedMissions / missionIds.length) * 100);
-      const progressLabel = completedMissions === 0 ? "Not started" : completedMissions === missionIds.length ? "Complete" : `${completedMissions}/${missionIds.length} missions`;
-      return <Pressable key={item.id} accessibilityLabel={`Open ${item.name}, ${progressLabel}`} onPress={() => openSport(item)} style={({ pressed }) => [styles.sportCard, styles.sportCardSimple, { width: cardWidth, backgroundColor: item.softColor }, pressed && styles.gameCardPressed]}>
-        <View style={styles.sportCardSimpleTop}><View style={[styles.sportMark, styles.sportMarkSimple, { borderColor: item.color }]}><MaterialCommunityIcons name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={39} color={item.color} /></View>{completedMissions === missionIds.length && <View style={[styles.sportCompleteBadge, { backgroundColor: item.color }]}><Text style={styles.sportCompleteBadgeText}>✓</Text></View>}</View>
-        <Text style={styles.sportCardSimpleTitle}>{item.name}</Text>
-        <View style={styles.sportCardSimpleBottom}><View style={styles.sportProgressCopy}><Text style={[styles.sportProgressLabel, { color: item.color }]}>{progressLabel}</Text><View style={styles.sportProgressTrack}><View style={[styles.sportProgressFill, { width: `${percent}%`, backgroundColor: item.color }]} /></View></View><View style={[styles.sportArrowButton, { backgroundColor: item.color }]}><Text style={styles.sportArrowButtonText}>→</Text></View></View>
-      </Pressable>;
-    })}</View>
+    <Text accessibilityRole="header" style={styles.sportsCatalogTitle}>ALL {SPORTS.length} SPORTS</Text>
+    <View style={styles.sportsGroupTitle}><View style={styles.sportsGroupNumber}><Text style={styles.sportsGroupNumberText}>01</Text></View><Text accessibilityRole="header" style={styles.sportsGroupTitleText}>GREAT PLACES TO START</Text></View>
+    <View style={styles.sportGrid}>{pilotSports.map(sportCard)}</View>
+    <View style={[styles.sportsGroupTitle, styles.sportsGroupTitleMore]}><View style={styles.sportsGroupNumber}><Text style={styles.sportsGroupNumberText}>02</Text></View><Text accessibilityRole="header" style={styles.sportsGroupTitleText}>EXPLORE 18 MORE SPORTS</Text></View>
+    <View style={styles.sportGrid}>{moreSports.map(sportCard)}</View>
   </ScrollView></ImageBackground></SafeAreaView>;
 }
 
@@ -675,6 +694,12 @@ const styles = StyleSheet.create({
   sectionTitle: { color: COLORS.navy, fontSize: 31, fontWeight: "900", letterSpacing: -1.7, marginBottom: 7 },
   sectionCopy: { color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 13, lineHeight: 19 },
   sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" },
+  sportsCatalogTitle: { marginTop: 4, color: "white", fontSize: 24, fontWeight: "900", letterSpacing: -0.7 },
+  sportsGroupTitle: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 20, marginBottom: 12 },
+  sportsGroupTitleMore: { marginTop: 30 },
+  sportsGroupNumber: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: COLORS.gold },
+  sportsGroupNumberText: { color: COLORS.navy, fontSize: 9, fontWeight: "900" },
+  sportsGroupTitleText: { color: "white", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   sportCard: { minHeight: 220, padding: 16, borderWidth: 1, borderTopWidth: 5, borderColor: COLORS.line, backgroundColor: COLORS.surface, shadowColor: COLORS.navy, shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.1, shadowRadius: 0 },
   sportCardSimple: { minHeight: 178, padding: 14, overflow: "hidden", borderWidth: 0, borderTopWidth: 0, borderRadius: 24, shadowColor: "#08051f", shadowOffset: { width: 0, height: 9 }, shadowOpacity: 0.32, shadowRadius: 14, elevation: 7 },
   sportCardSimpleTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
@@ -913,6 +938,9 @@ const styles = StyleSheet.create({
   primerTitle: { marginTop: 15, color: COLORS.navy, fontSize: 34, fontWeight: "900", letterSpacing: -1.6, lineHeight: 37 },
   primerBody: { marginTop: 14, color: "#4e5964", fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 16, lineHeight: 25 },
   primerTerms: { gap: 9, marginTop: 21 },
+  lessonSources: { width: "100%", gap: 5, marginTop: 17, padding: 13, borderRadius: 15, backgroundColor: COLORS.surface2 },
+  lessonSourcesTitle: { color: COLORS.teal, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
+  lessonSourcesText: { color: COLORS.muted, fontSize: 10, lineHeight: 15 },
   primerTerm: { padding: 13, borderLeftWidth: 5, borderRadius: 13, backgroundColor: "white", shadowColor: COLORS.navy, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 7, elevation: 2 },
   primerTermName: { color: COLORS.navy, fontSize: 13, fontWeight: "900" },
   primerTermMeaning: { marginTop: 4, color: COLORS.muted, fontFamily: Platform.select({ ios: "Georgia", default: "serif" }), fontSize: 12, lineHeight: 18 },

@@ -8,10 +8,12 @@ export type BeginnerLesson = {
 export type BeginnerGuide = {
   welcome: string;
   lessons: BeginnerLesson[];
+  sourceIds?: string[];
 };
 
 export const BEGINNER_GUIDES: Record<string, BeginnerGuide> = {
   football: {
+    sourceIds: ["nfl-2025-rules"],
     welcome: "Start with the field, the two teams, and what happens on one play. No football knowledge needed.",
     lessons: [
       { eyebrow: "THE BIG IDEA", title: "Carry or pass the ball toward the end zone.", body: "The offense has the ball and tries to score. The defense tries to stop the offense, force a mistake, or take the ball away." },
@@ -25,6 +27,7 @@ export const BEGINNER_GUIDES: Record<string, BeginnerGuide> = {
     ],
   },
   "flag-football": {
+    sourceIds: ["ifaf-flag-rules"],
     welcome: "Learn football’s no-tackle version from the ground up.",
     lessons: [
       { eyebrow: "THE BIG IDEA", title: "Advance the ball without being tackled.", body: "The offense passes or runs toward the end zone. Instead of tackling the ball carrier, a defender ends the play by pulling a flag from the player’s belt." },
@@ -38,6 +41,7 @@ export const BEGINNER_GUIDES: Record<string, BeginnerGuide> = {
     ],
   },
   basketball: {
+    sourceIds: ["fiba-2024-rules"],
     welcome: "Meet the court, the hoop, and the basic rhythm of a possession.",
     lessons: [
       { eyebrow: "THE BIG IDEA", title: "Put the ball through the other team’s hoop.", body: "Five players per team are on the court. The offense passes, dribbles, and shoots; the defense protects the basket and tries to regain possession." },
@@ -51,6 +55,7 @@ export const BEGINNER_GUIDES: Record<string, BeginnerGuide> = {
     ],
   },
   soccer: {
+    sourceIds: ["ifab-2026-laws"],
     welcome: "Learn the world’s game without assuming you know its language.",
     lessons: [
       { eyebrow: "THE BIG IDEA", title: "Move the ball into the other team’s goal.", body: "Each team normally has 11 players on the field, including a goalkeeper. Field players mainly use their feet, head, and body—not their hands." },
@@ -285,6 +290,7 @@ export const BEGINNER_GUIDES: Record<string, BeginnerGuide> = {
     ],
   },
   mma: {
+    sourceIds: ["abc-unified-mma"],
     welcome: "No combat-sports knowledge is assumed. Learn the language before judging a round.",
     lessons: [
       { eyebrow: "THE BIG IDEA", title: "MMA combines standing and ground fighting.", body: "Mixed martial arts lets trained athletes use techniques from boxing, kickboxing, wrestling, judo, jiu-jitsu, and other disciplines under one safety-focused rule set." },

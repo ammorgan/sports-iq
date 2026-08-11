@@ -60,7 +60,7 @@ test("beginner paths teach positions before specialized Position IQ", async () =
   const data = await readFile(new URL("../app/learning-data.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
-  assert.match(data, /title: sport\.positions\.length \? "Meet the Positions"/);
+  assert.match(data, /title: `Meet the \$\{pathName\}`/);
   assert.match(data, /generalModulesForSport/);
   assert.match(page, /const positionsUnlocked = currentSportModules\.every/);
   assert.match(mobile, /const positionsUnlocked = generalModules\.every/);
@@ -73,7 +73,7 @@ test("every sport gets a beginner-first playbook before its general quiz", async
   const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const mobileSource = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
 
-  assert.equal([...guideSource.matchAll(/^ {2}(?:"[^"]+"|[a-z]+): \{\n {4}welcome:/gm)].length, 23);
+  assert.equal([...guideSource.matchAll(/^ {4}welcome:/gm)].length, 23);
   assert.match(guideSource, /No combat-sports knowledge is assumed/);
   assert.match(guideSource, /Striking means legal punches, kicks, knees/);
   assert.match(guideSource, /Grappling means clinching, takedowns, positional control/);
@@ -91,6 +91,8 @@ test("sport snapshots use real short-form video instead of dot animations", asyn
   assert.equal([...clips.matchAll(/: pexels\(/g)].length, 18);
   assert.equal([...clips.matchAll(/localCreativeCommonsClip\(/g)].length, 2);
   assert.match(clips, /const pexels[\s\S]*durationSeconds: 8/);
+  assert.match(clips, /reviewStatus: verified \? "verified" : "needs-review"/);
+  assert.match(clips, /clip\?\.reviewStatus === "verified"/);
   assert.match(clips, /softball: pexels\(4937706/);
   assert.match(clips, /lacrosse: localCreativeCommonsClip\("\/sport-clips\/lacrosse\.mp4"/);
   assert.match(clips, /"field-hockey": localCreativeCommonsClip\("\/sport-clips\/field-hockey\.mp4"/);
@@ -100,6 +102,38 @@ test("sport snapshots use real short-form video instead of dot animations", asyn
   assert.match(mobileSource, /<VideoView/);
   assert.doesNotMatch(pageSource, /motion-dot|motion-ball/);
   assert.doesNotMatch(mobileSource, /motionPlayer|motionBall|motionTarget/);
+});
+
+test("pilot curriculum is source-backed and teaches before every check", async () => {
+  const registry = await readFile(new URL("../app/content-registry.ts", import.meta.url), "utf8");
+  const guides = await readFile(new URL("../app/module-guides.ts", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  for (const authority of ["NFL Football Operations", "International Federation of American Football", "FIBA", "The International Football Association Board", "Association of Boxing Commissions and Combative Sports"]) assert.match(registry, new RegExp(authority));
+  assert.equal([...registry.matchAll(/reviewedOn: "2026-08-10"/g)].length, 5);
+  assert.match(guides, /module\.pathway === "position"/);
+  assert.match(guides, /fb-fundamentals-score/);
+  assert.match(guides, /positionGroupLessons/);
+  assert.match(page, /moduleGuideFor\(module, moduleSport, effectiveAge\)/);
+  assert.match(mobile, /moduleGuideFor\(learningModule, sport, profile\.ageBand\)/);
+});
+
+test("home keeps all 23 detailed sport paths visible and accessible", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  assert.match(page, /ALL \{SPORTS\.length\} SPORTS/);
+  assert.match(page, /GREAT PLACES TO START/);
+  assert.match(page, /EXPLORE 18 MORE SPORTS/);
+  assert.doesNotMatch(page, /showAllSports/);
+  assert.doesNotMatch(mobile, /showAllSports/);
+  assert.doesNotMatch(page, /function SportTicker/);
+  assert.match(layout, /Skip to main content/);
+  assert.match(page, /aria-current=/);
+  assert.match(styles, /\.skip-link:focus/);
+  assert.match(mobile, /accessibilityLiveRegion="polite"/);
+  assert.match(mobile, /accessibilityState=\{\{ selected: isSelected/);
 });
 
 test("privacy and terms are visible before account setup", async () => {

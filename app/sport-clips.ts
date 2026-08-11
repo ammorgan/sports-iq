@@ -5,15 +5,23 @@ export type SportClip = {
   cue: string;
   startSeconds?: number;
   durationSeconds: number;
+  licenseName: string;
+  licenseUrl: string;
+  reviewedOn: string;
+  reviewStatus: "verified" | "needs-review";
 };
 
-const pexels = (id: number, sourceUrl: string, cue: string, startSeconds = 0): SportClip => ({
+const pexels = (id: number, sourceUrl: string, cue: string, verified = false, startSeconds = 0): SportClip => ({
   videoUrl: `https://www.pexels.com/download/video/${id}/`,
   sourceUrl,
   sourceName: "Pexels",
   cue,
   startSeconds,
   durationSeconds: 8,
+  licenseName: "Pexels License",
+  licenseUrl: "https://www.pexels.com/license/",
+  reviewedOn: "2026-08-10",
+  reviewStatus: verified ? "verified" : "needs-review",
 });
 
 const localCreativeCommonsClip = (videoUrl: string, sourceUrl: string, sourceName: string, cue: string): SportClip => ({
@@ -22,6 +30,10 @@ const localCreativeCommonsClip = (videoUrl: string, sourceUrl: string, sourceNam
   sourceName,
   cue,
   durationSeconds: 8,
+  licenseName: "Creative Commons Attribution 3.0",
+  licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
+  reviewedOn: "2026-08-10",
+  reviewStatus: "verified",
 });
 
 // Only add clips after the linked source page has been checked for both the
@@ -29,9 +41,9 @@ const localCreativeCommonsClip = (videoUrl: string, sourceUrl: string, sourceNam
 // https://www.pexels.com/license/. Local clips are attributed below and in
 // README.md; they were trimmed, resized, and muted from CC BY 3.0 originals.
 export const SPORT_CLIPS: Partial<Record<string, SportClip>> = {
-  football: pexels(34396408, "https://www.pexels.com/video/exciting-american-football-gameplay-outdoors-34396408/", "Watch how the play starts together, then spreads across the field."),
-  basketball: pexels(5275203, "https://www.pexels.com/video/guys-playing-a-basketball-game-5275203/", "Watch players pass, cut, and create room near the basket."),
-  soccer: pexels(15448993, "https://www.pexels.com/video/football-players-kicking-the-ball-during-a-match-15448993/", "Follow the ball, then notice how teammates move into passing space."),
+  football: pexels(34396408, "https://www.pexels.com/video/exciting-american-football-gameplay-outdoors-34396408/", "Watch how the play starts together, then spreads across the field.", true),
+  basketball: pexels(5275203, "https://www.pexels.com/video/guys-playing-a-basketball-game-5275203/", "Watch players pass, cut, and create room near the basket.", true),
+  soccer: pexels(15448993, "https://www.pexels.com/video/football-players-kicking-the-ball-during-a-match-15448993/", "Follow the ball, then notice how teammates move into passing space.", true),
   volleyball: pexels(6216952, "https://www.pexels.com/video/people-playing-volleyball-6216952/", "Look for the pass-set-attack rhythm before the ball crosses the net."),
   baseball: pexels(33930470, "https://www.pexels.com/video/dynamic-nighttime-baseball-game-action-scene-33930470/", "Watch the pitch begin the action and the field react after contact."),
   softball: pexels(4937706, "https://www.pexels.com/video/baseball-softball-aerial-footage-4937706/", "Notice the diamond, pitcher, batter, and fielders moving together after the ball is put in play."),
@@ -55,5 +67,10 @@ export const SPORT_CLIPS: Partial<Record<string, SportClip>> = {
 };
 
 export function sportClipFor(sportId: string) {
+  const clip = SPORT_CLIPS[sportId];
+  return clip?.reviewStatus === "verified" ? clip : undefined;
+}
+
+export function sportClipReviewFor(sportId: string) {
   return SPORT_CLIPS[sportId];
 }

@@ -1396,8 +1396,8 @@ export function buildSportIntroModule(sport: Sport): LearningModule {
     sportId: sport.id,
     level: 0,
     pathway: "general",
-    title: `${sport.name} in Motion`,
-    description: "A representative interactive fundamentals module for this sport’s growing curriculum.",
+    title: `How ${sport.name} Works`,
+    description: "Learn the goal, participants, playing area, scoring, and basic flow before making game decisions.",
     estimatedMinutes: 3,
     challenges: sport.introQuestions.map((question) => ({
       ...question,
@@ -1413,6 +1413,10 @@ export function sportPositionsIntroModuleId(sportId: string) {
 
 export function buildPositionsIntroModule(sport: Sport): LearningModule {
   const groups = [...new Set(sport.positions.map((position) => position.group))];
+  const pathName = sport.pathLabel?.includes("SKILL") ? "Skills"
+    : sport.pathLabel?.includes("EVENT") ? "Events"
+      : sport.pathLabel?.includes("STYLE") ? "Styles & Positions"
+        : "Positions";
   const challenges = groups.slice(0, 5).map((group, index) => {
     const groupPositions = sport.positions.filter((position) => position.group === group);
     const featured = groupPositions[index % groupPositions.length];
@@ -1422,8 +1426,8 @@ export function buildPositionsIntroModule(sport: Sport): LearningModule {
       conceptId: `${sport.id}-position-groups`,
       type: "choice" as const,
       label: "Meet the team",
-      prompt: `Which ${sport.name} position belongs to the ${group} group?`,
-      youngPrompt: `Tap a ${group} position.`,
+      prompt: `Which choice belongs to the ${group} group in ${sport.name}?`,
+      youngPrompt: `Tap one from ${group}.`,
       options: [featured.name, ...distractors.map((position) => position.name)],
       correct: featured.name,
       explanation: `${featured.name} belongs to ${group}. Its job includes helping the team ${featured.focus}.`,
@@ -1439,9 +1443,9 @@ export function buildPositionsIntroModule(sport: Sport): LearningModule {
     sportId: sport.id,
     level: 0,
     pathway: "general",
-    title: sport.positions.length ? "Meet the Positions" : "Meet the Events",
+    title: `Meet the ${pathName}`,
     description: sport.positions.length
-      ? "Learn who is on the playing area and what each group helps the team do."
+      ? "Learn the major role groups and what each one helps an athlete or team do."
       : "Learn the different ways athletes compete in this sport.",
     estimatedMinutes: 4,
     challenges,
