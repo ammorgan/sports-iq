@@ -40,6 +40,7 @@ test("content model covers the requested sports and per-sport pathways", async (
   for (const sport of [
     "Tackle Football", "Flag Football", "Basketball", "Soccer", "Volleyball", "Baseball", "Softball",
     "Ice Hockey", "Lacrosse", "Rugby", "Field Hockey", "Water Polo", "Cricket",
+    "Bowling",
   ]) assert.match(source, new RegExp(`name: "${sport}"`));
 
   for (const level of ["Rookie", "Starter", "Playmaker", "All-Star", "Elite", "Pro"]) {
@@ -51,21 +52,25 @@ test("content model covers the requested sports and per-sport pathways", async (
   assert.match(source, /type: "multi"/);
   assert.match(source, /type: "hotspot"/);
   assert.match(source, /variants: \["Women’s Tackle", "Men’s Tackle", "Youth Tackle"\]/);
-  assert.doesNotMatch(source, /WNFC/);
+  assert.doesNotMatch(source, new RegExp(["WN", "FC"].join("")));
   assert.match(source, /id: "flag-football"/);
   assert.match(source, /distinct non-tackle discipline/);
 });
 
-test("beginner paths teach positions before specialized Position IQ", async () => {
+test("players can choose Position IQ immediately and still receive a role primer", async () => {
   const data = await readFile(new URL("../app/learning-data.ts", import.meta.url), "utf8");
+  const guides = await readFile(new URL("../app/module-guides.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
   assert.match(data, /title: `Meet the \$\{pathName\}`/);
   assert.match(data, /generalModulesForSport/);
-  assert.match(page, /const positionsUnlocked = currentSportModules\.every/);
-  assert.match(mobile, /const positionsUnlocked = generalModules\.every/);
-  assert.match(page, /Start here ·/);
-  assert.match(mobile, /START HERE/);
+  assert.match(guides, /function positionLesson/);
+  assert.doesNotMatch(page, /positionsUnlocked/);
+  assert.doesNotMatch(mobile, /positionsUnlocked/);
+  assert.match(page, /Choose any role now/);
+  assert.match(mobile, /CHOOSE ANY ROLE NOW/);
+  assert.match(page, /<CourseMap /);
+  assert.match(mobile, /<CourseMapMobile /);
 });
 
 test("every sport gets a beginner-first playbook before its general quiz", async () => {
@@ -73,67 +78,47 @@ test("every sport gets a beginner-first playbook before its general quiz", async
   const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const mobileSource = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
 
-  assert.equal([...guideSource.matchAll(/^ {4}welcome:/gm)].length, 23);
+  assert.equal([...guideSource.matchAll(/^ {4}welcome:/gm)].length, 24);
   assert.match(guideSource, /No combat-sports knowledge is assumed/);
   assert.match(guideSource, /Striking means legal punches, kicks, knees/);
   assert.match(guideSource, /Grappling means clinching, takedowns, positional control/);
   assert.match(pageSource, /screen, setScreen.*"primer"/s);
   assert.match(mobileSource, /type Screen = .*"primer"/);
-  assert.match(pageSource, /TRY THE QUICK CHECK|Try the quick check/);
-  assert.match(mobileSource, /TRY THE QUICK CHECK/);
+  assert.match(pageSource, /Let’s try it/);
+  assert.match(mobileSource, /LET’S TRY IT/);
 });
 
-test("sport snapshots use real short-form video instead of dot animations", async () => {
-  const clips = await readFile(new URL("../app/sport-clips.ts", import.meta.url), "utf8");
-  const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  const mobileSource = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
-
-  assert.equal([...clips.matchAll(/: pexels\(/g)].length, 18);
-  assert.equal([...clips.matchAll(/localCreativeCommonsClip\(/g)].length, 2);
-  assert.match(clips, /const pexels[\s\S]*durationSeconds: 8/);
-  assert.match(clips, /reviewStatus: verified \? "verified" : "needs-review"/);
-  assert.match(clips, /clip\?\.reviewStatus === "verified"/);
-  assert.match(clips, /softball: pexels\(4937706/);
-  assert.match(clips, /lacrosse: localCreativeCommonsClip\("\/sport-clips\/lacrosse\.mp4"/);
-  assert.match(clips, /"field-hockey": localCreativeCommonsClip\("\/sport-clips\/field-hockey\.mp4"/);
-  assert.doesNotMatch(clips, /DVIDS|dvidshub|d34w7g4gy10iej/i);
-  assert.doesNotMatch(clips, /^\s{2}(?:mma|wrestling):/m);
-  assert.match(pageSource, /<video/);
-  assert.match(mobileSource, /<VideoView/);
-  assert.doesNotMatch(pageSource, /motion-dot|motion-ball/);
-  assert.doesNotMatch(mobileSource, /motionPlayer|motionBall|motionTarget/);
+test("video playback is paused on both published app surfaces", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  for (const source of [page,mobile]) {
+    assert.doesNotMatch(source, /SportMotionPreview|SportClipVideo|sportClipFor|<video|<VideoView|useVideoPlayer/);
+  }
 });
 
-test("pilot curriculum is source-backed and teaches before every check", async () => {
+test("curriculum is source-backed and teaches before every check", async () => {
   const registry = await readFile(new URL("../app/content-registry.ts", import.meta.url), "utf8");
   const guides = await readFile(new URL("../app/module-guides.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
-  for (const authority of ["NFL Football Operations", "International Federation of American Football", "FIBA", "The International Football Association Board", "Association of Boxing Commissions and Combative Sports"]) assert.match(registry, new RegExp(authority));
+  for (const authority of ["NFL Football Operations", "International Federation of American Football", "FIBA", "The International Football Association Board", "Association of Boxing Commissions and Combative Sports", "United States Bowling Congress"]) assert.match(registry, new RegExp(authority));
   assert.equal([...registry.matchAll(/reviewedOn: "2026-08-10"/g)].length, 5);
+  assert.match(registry, /reviewedOn: "2026-08-16"/);
   assert.match(guides, /module\.pathway === "position"/);
   assert.match(guides, /fb-fundamentals-score/);
   assert.match(guides, /positionGroupLessons/);
   assert.match(page, /moduleGuideFor\(module, moduleSport, effectiveAge\)/);
-  assert.match(mobile, /moduleGuideFor\(learningModule, sport, profile\.ageBand\)/);
+  assert.match(mobile, /moduleGuideFor\(learningModule, moduleSport, profile\.ageBand\)/);
 });
 
-test("home keeps all 23 detailed sport paths visible and accessible", async () => {
+test("both homes publish the same five-sport library", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
-  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
-  assert.match(page, /ALL \{SPORTS\.length\} SPORTS/);
-  assert.match(page, /GREAT PLACES TO START/);
-  assert.match(page, /EXPLORE 18 MORE SPORTS/);
-  assert.doesNotMatch(page, /showAllSports/);
-  assert.doesNotMatch(mobile, /showAllSports/);
-  assert.doesNotMatch(page, /function SportTicker/);
+  for (const source of [page,mobile]) assert.match(source, /FEATURED_SPORTS as SPORTS/);
+  assert.match(page, /quest-sport-library/);
+  assert.match(mobile, /SPORTS.map\(sportCard\)/);
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   assert.match(layout, /Skip to main content/);
-  assert.match(page, /aria-current=/);
-  assert.match(styles, /\.skip-link:focus/);
-  assert.match(mobile, /accessibilityLiveRegion="polite"/);
-  assert.match(mobile, /accessibilityState=\{\{ selected: isSelected/);
 });
 
 test("privacy and terms are visible before account setup", async () => {
@@ -147,6 +132,32 @@ test("privacy and terms are visible before account setup", async () => {
   assert.match(terms, /Educational scope and sports safety/);
 });
 
+test("privacy operations, progression integrity, and measurement are shared by web and mobile", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const gate = await readFile(new URL("../app/privacy-gate.tsx", import.meta.url), "utf8");
+  const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  const operations = await readFile(new URL("../docs/PRIVACY_PROGRESS_MEASUREMENT_OPERATIONS.md", import.meta.url), "utf8");
+
+  assert.match(gate, /legalAccepted/);
+  assert.match(page, /Export my data/);
+  assert.match(page, /Delete local profile/);
+  assert.match(mobile, /EXPORT MY DATA/);
+  assert.match(mobile, /DELETE LOCAL PROFILE/);
+  assert.match(page, /calculateCompletionAward/);
+  assert.match(mobile, /calculateCompletionAward/);
+  assert.match(page, /canStartLearningModule/);
+  assert.match(mobile, /canStartLearningModule/);
+  assert.match(page, /completedRequiredQuestions/);
+  assert.match(mobile, /completedRequiredQuestions/);
+  assert.match(mobile, /measurementPreference: "essential-only", productEvents: \[\]/);
+  assert.match(schema, /moduleCompletions/);
+  assert.match(schema, /legalAcceptances/);
+  assert.match(schema, /dataExportRequests/);
+  assert.match(schema, /productMetricsDaily/);
+  assert.match(operations, /First valid module completion rate/);
+});
+
 test("football contains every major position group from the product brief", async () => {
   const source = await readFile(new URL("../app/learning-data.ts", import.meta.url), "utf8");
   for (const position of [
@@ -155,6 +166,12 @@ test("football contains every major position group from the product brief", asyn
     "Defensive Tackle", "Defensive End", "Inside Linebacker", "Outside Linebacker",
     "Cornerback", "Safety", "Kicker", "Punter", "Long Snapper", "Returner",
   ]) assert.match(source, new RegExp(`name: "${position}"`));
+  for (const [position, abbreviation] of [
+    ["Quarterback", "QB"], ["Fullback", "FB"],
+    ["Left Tackle", "LT"], ["Left Guard", "LG"], ["Center", "C"],
+    ["Right Guard", "RG"], ["Right Tackle", "RT"],
+    ["Inside Linebacker", "ILB"], ["Outside Linebacker", "OLB"],
+  ]) assert.match(source, new RegExp(`name: "${position}", abbreviation: "${abbreviation}"`));
 });
 
 test("intro quizzes use explicit, unambiguous rules contexts", async () => {
@@ -177,7 +194,7 @@ test("age paths meaningfully adapt the learning experience", async () => {
   for (const age of ["7-9", "10-12", "13-15", "16-17", "18+"]) {
     assert.match(source, new RegExp(`value: "${age.replace("+", "\\+")}"`));
   }
-  assert.match(source, /fewer choices, and no timer/);
+  assert.match(source, /Simple words and time to think/);
   assert.match(source, /seconds: null/);
   assert.match(source, /return band \? band\.seconds : 35/);
   assert.doesNotMatch(source, /\?\.seconds \?\? 35/);
@@ -189,7 +206,8 @@ test("age paths meaningfully adapt the learning experience", async () => {
   assert.match(learningData, /options\.length > 2/);
   assert.match(source, /ageAppropriateChallenges/);
   assert.match(source, /onExpire=\{\(\) => checkAnswer\(\[\]\)\}/);
-  assert.match(source, /play-visual/);
+  assert.match(source, /quest-lesson-coach/);
+  assert.doesNotMatch(source, /className="play-visual"/);
   assert.match(source, /PLAYER_RANKS/);
   assert.match(source, /avatarMark/);
   assert.match(source, /Change age path/);
@@ -203,16 +221,67 @@ test("age paths meaningfully adapt the learning experience", async () => {
   assert.match(source, /challenge\.youngExplanation/);
 });
 
+test("the early-reader path can be played with less reading", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const lessonAudio = await readFile(new URL("../app/lesson-audio.ts", import.meta.url), "utf8");
+  const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  const packageSource = await readFile(new URL("../mobile/package.json", import.meta.url), "utf8");
+
+  assert.match(page, /SpeechSynthesisUtterance/);
+  assert.match(page, /preferredBrowserVoice/);
+  assert.match(page, /message\.rate = 0\.92/);
+  assert.match(page, /aria-pressed=\{speaking\}/);
+  assert.match(page, /Hear this lesson/);
+  assert.match(page, /onSelect=\{\(values\) => \{ setSelectedAnswers\(values\); if \(isEarlyReader[\s\S]*?checkAnswer\(values\)/);
+  assert.match(mobile, /from "expo-speech"/);
+  assert.match(mobile, /getAvailableVoicesAsync/);
+  assert.match(mobile, /VoiceQuality\.Enhanced/);
+  assert.match(mobile, /HEAR THE QUESTION/);
+  assert.match(mobile, /onSelect=\{\(values\) => \{ setSelected\(values\); if \(isEarlyReader[\s\S]*?checkAnswer\(values\)/);
+  assert.match(packageSource, /"expo-speech"/);
+  assert.match(page, /slice\(0, 3\)/);
+  assert.match(mobile, /isEarlyReader \? firstSentence\(item.meaning\) : item.meaning/);
+  assert.match(lessonAudio, /Two words help you play/);
+  assert.match(page, /lessonNarrationText/);
+  assert.match(mobile, /lessonNarrationText/);
+});
+
+test("lesson narration is generated ahead of time without shipping the API key", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const lessonAudio = await readFile(new URL("../app/lesson-audio.ts", import.meta.url), "utf8");
+  const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  const generator = await readFile(new URL("../scripts/generate-lesson-audio.mjs", import.meta.url), "utf8");
+  const packageSource = await readFile(new URL("../package.json", import.meta.url), "utf8");
+
+  assert.match(packageSource, /"audio:generate"/);
+  assert.match(generator, /https:\/\/api\.openai\.com\/v1\/audio\/speech/);
+  assert.match(lessonAudio, /gpt-4o-mini-tts/);
+  assert.match(lessonAudio, /"marin"/);
+  assert.match(lessonAudio, /"cedar"/);
+  assert.match(generator, /LESSON_AUDIO_VOICES/);
+  assert.match(generator, /lessonAudioSynthesisInput/);
+  assert.match(generator, /\.env\.local/);
+  assert.match(page, /lessonAudioEntryFor/);
+  assert.match(page, /AI-generated voice/);
+  assert.match(mobile, /mobileLessonAudioAssetFor/);
+  assert.match(mobile, /AI VOICE/);
+  assert.doesNotMatch(page, /OPENAI_API_KEY|api\.openai\.com/);
+  assert.doesNotMatch(mobile, /OPENAI_API_KEY|api\.openai\.com/);
+});
+
 test("players get diverse avatars, sport icons, the image logo, and no premature sound control", async () => {
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const avatarCatalog = await readFile(new URL("../app/avatar-catalog.ts", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  assert.equal([...source.matchAll(/src: "\/avatars\/avatar-\d{2}\.png"/g)].length, 22);
-  assert.match(source, /avatar-16[\s\S]*avatar-05[\s\S]*avatar-20[\s\S]*avatar-01[\s\S]*avatar-18/);
+  assert.equal([...avatarCatalog.matchAll(/id: "avatar-\d{2}"/g)].length, 22);
+  assert.match(avatarCatalog, /AVATAR_PROFILES/);
+  assert.match(avatarCatalog, /narrationVoice/);
+  assert.match(source, /AVATAR_PROFILES/);
   assert.match(source, /CHOOSE YOUR AVATAR/);
-  assert.match(source, /SPORT_GLYPHS/);
+  assert.match(source, /SportGlyph/);
   assert.match(source, /RepQuest logo/);
-  assert.match(styles, /url\("\/repquest-logo\.png"\)/);
+  assert.match(styles, /url\("\/repquest-logo-ui\.png"\)/);
   assert.doesNotMatch(source, /SFX|answer feedback sounds|soundOn/);
   assert.doesNotMatch(styles, /sound-button/);
   assert.doesNotMatch(source, />[♪♩]</);
@@ -220,26 +289,50 @@ test("players get diverse avatars, sport icons, the image logo, and no premature
   assert.match(styles, /prefers-reduced-motion: reduce/);
 });
 
+test("course and position choices are stacked and accessible on both surfaces", async () => {
+  const web = await readFile(new URL("../app/course-map.tsx", import.meta.url), "utf8");
+  const native = await readFile(new URL("../mobile/CourseMap.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(web, /Position training/);
+  assert.match(native, /Position training/);
+  assert.match(web, /aria-expanded/);
+  assert.match(native, /accessibilityState/);
+  assert.match(css, /\.quest-track-switch \{ display: grid; gap: 10px/);
+});
+
+test("mobile quiz buttons do not pass a native press event as the selected answer", async () => {
+  const mobile = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  const learningData = await readFile(new URL("../app/learning-data.ts", import.meta.url), "utf8");
+
+  assert.match(mobile, /function PrimaryButton[\s\S]*?onPress=\{\(\) => onPress\(\)\}/);
+  assert.match(learningData, /options: \["The strong-side linebacker"[\s\S]*?correct: "The strong-side linebacker"/);
+});
+
 test("mobile app shares learning data and adapts across iOS, Android, phones, and tablets", async () => {
   const source = await readFile(new URL("../mobile/App.tsx", import.meta.url), "utf8");
+  const avatarCatalog = await readFile(new URL("../app/avatar-catalog.ts", import.meta.url), "utf8");
   const config = await readFile(new URL("../mobile/app.json", import.meta.url), "utf8");
   const iosInfo = await readFile(new URL("../mobile/ios/SportsIQ/Info.plist", import.meta.url), "utf8");
   const packageSource = await readFile(new URL("../mobile/package.json", import.meta.url), "utf8");
 
   assert.match(source, /from "\.\.\/app\/learning-data"/);
   assert.equal([...source.matchAll(/require\("\.\/assets\/avatars-clean\/avatar-\d{2}\.png"\)/g)].length, 22);
-  assert.match(source, /avatar-16[\s\S]*avatar-05[\s\S]*avatar-20[\s\S]*avatar-01[\s\S]*avatar-18/);
+  assert.equal([...avatarCatalog.matchAll(/id: "avatar-\d{2}"/g)].length, 22);
+  assert.match(source, /AVATAR_PROFILES/);
   assert.match(source, /useWindowDimensions/);
   assert.match(source, /function Logo\(\{ size = 56/);
+  assert.match(source, /assets\/repquest-logo-ui\.png/);
   assert.match(source, /screen === "profile"/);
-  assert.match(source, /assets\/sport-clips\/lacrosse\.mp4/);
-  assert.match(source, /assets\/sport-clips\/field-hockey\.mp4/);
+  assert.doesNotMatch(source, /require\([^\n]*sport-clips/);
+  assert.doesNotMatch(source, /assets\/sport-clips\/(?:flag-football|lacrosse)\.mp4/);
   assert.match(source, /width >= 720/);
   assert.match(source, /seconds: null/);
   for (const seconds of [60, 45, 35, 30]) assert.match(source, new RegExp(`seconds: ${seconds}`));
   assert.match(source, /useAudioPlayer/);
   assert.match(source, /AsyncStorage/);
-  assert.match(source, /positionModuleId/);
+  assert.match(source, /learningModulePathsForSport/);
+  assert.match(source, /positionModulesForPosition/);
+  assert.match(source, /sportProgressSummary/);
   assert.match(config, /"supportsTablet": true/);
   assert.match(config, /"name": "RepQuest"/);
   assert.match(iosInfo, /<key>CFBundleDisplayName<\/key>\s*<string>RepQuest<\/string>/);

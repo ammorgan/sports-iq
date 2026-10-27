@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LEGAL_VERSIONS } from "../product-governance";
 
 export const metadata = { title: "Privacy Notice — RepQuest" };
 
@@ -7,7 +8,7 @@ export default function PrivacyNotice() {
     <Link href="/" className="legal-back">← Back to RepQuest</Link>
     <span className="legal-kicker">REPQUEST PRIVACY</span>
     <h1>Privacy Notice</h1>
-    <p className="legal-updated">Beta draft · Effective August 10, 2026</p>
+    <p className="legal-updated">Beta draft · Version {LEGAL_VERSIONS.privacy} · Effective August 11, 2026</p>
     <div className="legal-alert"><strong>Beta notice</strong><span>Online accounts are not active yet. Guest progress is currently stored on the player’s device. This notice must receive legal review and final operator contact details before public launch.</span></div>
 
     <h2>What RepQuest is</h2>
@@ -28,11 +29,17 @@ export default function PrivacyNotice() {
     <h2>Sharing and selling</h2>
     <p>RepQuest does not sell personal information. Child profiles are not placed on public leaderboards. When service providers are added, they will be limited to performing defined functions such as hosting, authentication, consent, security, or diagnostics under appropriate agreements.</p>
 
-    <h2>Retention, choices, and deletion</h2>
-    <p>Local guest data remains until the player resets progress, clears storage, or removes the app. Before accounts launch, RepQuest must provide in-app account deletion and a public web deletion-request path. Parents must be able to review or delete a child profile and revoke consent.</p>
+    <h2>Product measurement</h2>
+    <p>Product-improvement measurement is off by default. It is unavailable for players under 13 in the beta. An eligible player who turns it on allows RepQuest to store a short local history of allowlisted events such as sport opened, lesson viewed, question outcome, and module completed. Those events use only the broad age path and content identifiers. They do not include a name, email, exact birthday, answer text, advertising identifier, location, or device identifier, and the local event history is limited to 30 days and 200 events.</p>
+
+    <h2>Retention, access, export, and deletion</h2>
+    <p>Local guest data remains until the player resets learning progress, deletes the local profile, clears storage, or removes the app. The Privacy Center provides a readable data export, a progress-only reset, and full local-profile deletion. Local deletion is immediate on that device. Before online accounts launch, RepQuest must operate authenticated access/export/deletion requests, parent review and consent revocation, documented retention schedules, and deletion across service providers and backups.</p>
 
     <h2>Security</h2>
     <p>RepQuest is designed to use encrypted connections, managed authentication, server-side access controls, limited collection, rate limits, and audited administrative access. No system can guarantee absolute security.</p>
+
+    <h2>Legal acknowledgement and changes</h2>
+    <p>The beta records the versions of the Privacy Notice and Terms acknowledged on the device. That acknowledgement permits local beta use only. It is not verifiable parental consent for an online child account.</p>
 
     <h2>Changes and contact</h2>
     <p>Material changes will be posted here with a new effective date and, when required, direct notice or renewed consent. Final business identity, mailing address, and monitored privacy contact must be added before public account registration is enabled.</p>

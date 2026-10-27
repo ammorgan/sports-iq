@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LEGAL_VERSIONS } from "../product-governance";
 
 export const metadata = { title: "Terms of Use — RepQuest" };
 
@@ -7,7 +8,7 @@ export default function TermsOfUse() {
     <Link href="/" className="legal-back">← Back to RepQuest</Link>
     <span className="legal-kicker">REPQUEST LEGAL</span>
     <h1>Terms of Use</h1>
-    <p className="legal-updated">Beta draft · Effective August 10, 2026</p>
+    <p className="legal-updated">Beta draft · Version {LEGAL_VERSIONS.terms} · Effective August 11, 2026</p>
     <div className="legal-alert"><strong>Beta terms</strong><span>These terms describe the current preview. Final operator identity, contact information, dispute terms, and jurisdiction must be completed and reviewed by counsel before public launch.</span></div>
 
     <h2>Using RepQuest</h2>
@@ -26,7 +27,10 @@ export default function TermsOfUse() {
     <p>Do not misuse the service, bypass security, automate fake accounts or XP, impersonate others, upload harmful material, interfere with another user, reverse engineer protected services where prohibited, or use RepQuest unlawfully. Public child profiles, messaging, and user-submitted content are not part of the beta.</p>
 
     <h2>XP and game features</h2>
-    <p>XP, badges, streaks, ranks, and leaderboard positions have no cash value and may be corrected when earned through errors or abuse. Features may change as the curriculum improves.</p>
+    <p>XP, badges, streaks, ranks, and leaderboard positions have no cash value and may be corrected when earned through errors or abuse. XP is awarded once for a module’s first valid completion. Replaying a completed module can improve mastery but does not create repeat completion XP. Features and progression thresholds may change as the curriculum improves.</p>
+
+    <h2>Privacy choices and product measurement</h2>
+    <p>Product-improvement measurement is optional, off by default, and unavailable to under-13 players in the beta. Eligible users can change that choice in the Privacy Center. Deleting a local profile removes its local progress, legal acknowledgement, and optional measurement history from that device.</p>
 
     <h2>Content and intellectual property</h2>
     <p>RepQuest software, branding, original curriculum, graphics, and game design are protected by applicable law. Third-party media remains subject to its source license and attribution. Users receive a personal, limited, revocable right to use the service for learning.</p>

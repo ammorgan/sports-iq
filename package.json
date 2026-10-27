@@ -6,15 +6,19 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "audio:generate": "node --experimental-strip-types --import ./scripts/register-ts-loader.mjs ./scripts/generate-lesson-audio.mjs",
+    "audio:preview": "node --experimental-strip-types --import ./scripts/register-ts-loader.mjs ./scripts/generate-lesson-audio.mjs --preview-voices",
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build && node --test tests/rendered-html.test.mjs",
+    "test": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build && node --experimental-strip-types --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@mdi/js": "^7.4.47",
+    "@mdi/react": "^1.6.1",
     "drizzle-orm": "0.45.2",
     "react": "19.2.6",
     "react-dom": "19.2.6"

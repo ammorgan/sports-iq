@@ -220,6 +220,8 @@ PODS:
     - React-Core
     - React-runtimescheduler
     - ReactCommon
+  - ExpoSpeech (55.0.16):
+    - ExpoModulesCore
   - ExpoVideo (55.0.19):
     - ExpoModulesCore
   - EXUpdatesInterface (55.1.6):
@@ -2156,6 +2158,7 @@ DEPENDENCIES:
   - "ExpoLogBox (from `../../node_modules/.pnpm/@expo+log-box@55.0.13_@expo+dom-webview@55.0.6_expo@55.0.28_react-native@0.83.10_@babel_a4dd3853adb3f5cf4e6a8a73d7b32be0/node_modules/@expo/log-box`)"
   - "ExpoModulesCore (from `../../node_modules/.pnpm/expo-modules-core@55.0.25_react-native@0.83.10_@babel+core@7.29.7_supports-color@10.2.2_ee2b8c7f8368b7c1a6aa8e8edbd0ef2c/node_modules/expo-modules-core`)"
   - "ExpoModulesJSI (from `../../node_modules/.pnpm/expo-modules-core@55.0.25_react-native@0.83.10_@babel+core@7.29.7_supports-color@10.2.2_ee2b8c7f8368b7c1a6aa8e8edbd0ef2c/node_modules/expo-modules-core`)"
+  - "ExpoSpeech (from `../../node_modules/.pnpm/expo-speech@55.0.16_expo@55.0.28/node_modules/expo-speech/ios`)"
   - "ExpoVideo (from `../../node_modules/.pnpm/expo-video@55.0.19_expo@55.0.28_react-native@0.83.10_@babel+core@7.29.7_supports-color@_37ee0d5a41d6d691b661dd0044f510cf/node_modules/expo-video/ios`)"
   - "EXUpdatesInterface (from `../../node_modules/.pnpm/expo-updates-interface@55.1.6_expo@55.0.28/node_modules/expo-updates-interface/ios`)"
   - "FBLazyVector (from `../../node_modules/.pnpm/react-native@0.83.10_@babel+core@7.29.7_supports-color@10.2.2__@types+react@19.2.14_react@19.2.0_supports-color@10.2.2/node_modules/react-native/Libraries/FBLazyVector`)"
@@ -2271,6 +2274,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/.pnpm/expo-modules-core@55.0.25_react-native@0.83.10_@babel+core@7.29.7_supports-color@10.2.2_ee2b8c7f8368b7c1a6aa8e8edbd0ef2c/node_modules/expo-modules-core"
   ExpoModulesJSI:
     :path: "../../node_modules/.pnpm/expo-modules-core@55.0.25_react-native@0.83.10_@babel+core@7.29.7_supports-color@10.2.2_ee2b8c7f8368b7c1a6aa8e8edbd0ef2c/node_modules/expo-modules-core"
+  ExpoSpeech:
+    :path: "../../node_modules/.pnpm/expo-speech@55.0.16_expo@55.0.28/node_modules/expo-speech/ios"
   ExpoVideo:
     :path: "../../node_modules/.pnpm/expo-video@55.0.19_expo@55.0.28_react-native@0.83.10_@babel+core@7.29.7_supports-color@_37ee0d5a41d6d691b661dd0044f510cf/node_modules/expo-video/ios"
   EXUpdatesInterface:
@@ -2447,6 +2452,7 @@ SPEC CHECKSUMS:
   ExpoLogBox: 4bb2f041d3281b8c27ed494fae3b6f217ba79857
   ExpoModulesCore: 998d0fbf7f687b1ff715b87cec779fc92be628ac
   ExpoModulesJSI: 964334271fc77832736f66ee1785761cdc778dbe
+  ExpoSpeech: c8fda3eb7287c5303fc32f39ed53e1c0f1c5c3c8
   ExpoVideo: e6ac5b0bd3a9e636403afde090fd8abf28ce192b
   EXUpdatesInterface: 4c11f4d1594526258f14d09817dc407acbf24e3b
   FBLazyVector: b88945378388c6651d3725b0e8c2624fbb37ec64

@@ -1,0 +1,16 @@
+import {Pressable,StyleSheet,Text,View} from "react-native";
+import {FORMATIONS,formationTargets,type FormationExercise} from "../app/course-formations";
+export function FormationBoardMobile({exercise,selected,onSelect,reveal,disabled,teaching=false}:{exercise:FormationExercise;selected?:string[];onSelect?:(values:string[])=>void;reveal?:boolean;disabled?:boolean;teaching?:boolean}){
+ const spec=FORMATIONS[exercise.kind],targets=formationTargets(exercise);
+ return <View style={s.shell}><Text style={s.title}>{spec.title}</Text><Text style={s.note}>{spec.orientation}</Text><View style={s.board} accessibilityLabel={spec.title}>
+  <Text style={s.landmark}>{exercise.kind.startsWith("football")?"UPFIELD":exercise.kind==="volleyball"?"NET":exercise.kind==="baseball"?"OUTFIELD":exercise.kind==="basketball"?"BASKET":"OPPONENT'S GOAL"}</Text>
+  {spec.players.map((player)=>{
+   const target=targets.find((entry)=>entry.role===player.role);
+   const position={left:`${player.x}%` as `${number}%`,top:`${player.y}%` as `${number}%`};
+   const label=teaching?player.role:target?.label??player.role;
+   const color=player.role==="L"&&s.libero;
+   return target&&!teaching?<Pressable key={player.role} accessibilityRole="button" accessibilityLabel={`Player ${target.label}, ${player.x<34?"left":player.x>66?"right":"middle"}, ${player.y<34?"top":player.y>66?"bottom":"central"} area`} accessibilityState={{selected:selected?.includes(target.label),disabled}} disabled={disabled} onPress={()=>onSelect?.([target.label])} style={[s.player,s.target,position,color,selected?.includes(target.label)&&s.selected,reveal&&player.role===exercise.targetRole&&s.correct]}><Text style={s.targetText}>{label}</Text></Pressable>:<View key={player.role} style={[s.player,position,color,teaching&&player.role===exercise.targetRole&&s.focus]}><Text style={s.playerText}>{label}</Text></View>;
+  })}
+ </View>{teaching&&<Text style={s.teach}>{exercise.roleName}: {exercise.why}</Text>}<Text style={s.note}>{spec.note}</Text>{!teaching&&<Text style={s.note}>A, B, and C mark choices, not shirt numbers.</Text>}</View>;
+}
+const s=StyleSheet.create({shell:{marginVertical:18,gap:10},title:{color:"#f4eaff",fontSize:17,fontWeight:"800"},note:{color:"#c4b6d7",fontSize:13,lineHeight:20},board:{position:"relative",height:365,borderWidth:2,borderColor:"#647886",borderRadius:16,backgroundColor:"#193a38",marginVertical:8},landmark:{position:"absolute",top:5,left:0,right:0,textAlign:"center",color:"#b9d7cf",fontSize:9,fontWeight:"800",letterSpacing:1},player:{position:"absolute",width:31,height:31,marginLeft:-15.5,marginTop:-15.5,borderRadius:12,borderWidth:1,borderColor:"#829cb3",backgroundColor:"#294a62",alignItems:"center",justifyContent:"center"},playerText:{fontSize:9,color:"#edf8ff",fontWeight:"800"},target:{width:48,height:48,marginLeft:-24,marginTop:-24,borderRadius:16,borderWidth:3,borderColor:"#b48ae9",backgroundColor:"#32204d",zIndex:2},targetText:{fontSize:20,fontWeight:"900",color:"#fff"},selected:{borderColor:"#ffe3a0",backgroundColor:"#72501e"},correct:{borderColor:"#9ce3be",backgroundColor:"#275c48"},focus:{borderWidth:3,borderColor:"#ffe3a0"},libero:{backgroundColor:"#754d2e",borderColor:"#ffd78e"},teach:{color:"#f4db9b",fontSize:15,lineHeight:23}});

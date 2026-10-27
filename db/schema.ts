@@ -71,6 +71,20 @@ export const parentalConsents = sqliteTable("parental_consents", {
   index("idx_parental_consents_status").on(table.status),
 ]);
 
+export const legalAcceptances = sqliteTable("legal_acceptances", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  playerId: text("player_id").references(() => playerProfiles.id, { onDelete: "set null" }),
+  privacyVersion: text("privacy_version").notNull(),
+  termsVersion: text("terms_version").notNull(),
+  actorType: text("actor_type", { enum: ["self", "parent_guardian"] }).notNull(),
+  acceptanceScope: text("acceptance_scope", { enum: ["account", "child_profile"] }).notNull(),
+  acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  index("idx_legal_acceptances_account_id_accepted_at").on(table.accountId, table.acceptedAt),
+  index("idx_legal_acceptances_player_id_accepted_at").on(table.playerId, table.acceptedAt),
+]);
+
 export const sportProgress = sqliteTable("sport_progress", {
   playerId: text("player_id").notNull().references(() => playerProfiles.id, { onDelete: "cascade" }),
   sportId: text("sport_id").notNull(),
@@ -85,11 +99,32 @@ export const sportProgress = sqliteTable("sport_progress", {
   index("idx_sport_progress_player_id").on(table.playerId),
 ]);
 
+/**
+ * The first valid completion is one row enforced by the composite primary key.
+ * The server calculates xp_awarded from curriculum metadata inside a transaction;
+ * client XP claims and replay submissions are never authoritative.
+ */
+export const moduleCompletions = sqliteTable("module_completions", {
+  playerId: text("player_id").notNull().references(() => playerProfiles.id, { onDelete: "cascade" }),
+  moduleId: text("module_id").notNull(),
+  sportId: text("sport_id").notNull(),
+  contentVersion: text("content_version").notNull(),
+  clientSubmissionId: text("client_submission_id").notNull(),
+  questionCount: integer("question_count").notNull(),
+  correctCount: integer("correct_count").notNull(),
+  xpAwarded: integer("xp_awarded").notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.playerId, table.moduleId] }),
+  uniqueIndex("idx_module_completions_submission_id").on(table.clientSubmissionId),
+  index("idx_module_completions_player_completed_at").on(table.playerId, table.completedAt),
+]);
+
 export const privacyEvents = sqliteTable("privacy_events", {
   id: text("id").primaryKey(),
   accountId: text("account_id").references(() => accounts.id, { onDelete: "set null" }),
   playerId: text("player_id").references(() => playerProfiles.id, { onDelete: "set null" }),
-  eventType: text("event_type", { enum: ["notice_shown", "consent_requested", "consent_verified", "consent_revoked", "deletion_requested", "data_deleted"] }).notNull(),
+  eventType: text("event_type", { enum: ["notice_shown", "notice_accepted", "consent_requested", "consent_verified", "consent_revoked", "data_export_requested", "data_export_completed", "deletion_requested", "data_deleted"] }).notNull(),
   noticeVersion: text("notice_version"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [
@@ -104,3 +139,31 @@ export const accountDeletionRequests = sqliteTable("account_deletion_requests", 
   requestedAt: integer("requested_at", { mode: "timestamp_ms" }).notNull(),
   completedAt: integer("completed_at", { mode: "timestamp_ms" }),
 }, (table) => [index("idx_account_deletion_requests_account_status").on(table.accountId, table.status)]);
+
+export const dataExportRequests = sqliteTable("data_export_requests", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["requested", "processing", "ready", "expired", "cancelled"] }).notNull().default("requested"),
+  requestedAt: integer("requested_at", { mode: "timestamp_ms" }).notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+}, (table) => [index("idx_data_export_requests_account_status").on(table.accountId, table.status)]);
+
+/**
+ * Product measurement is aggregated before storage. There is intentionally no
+ * account, player, session, network, or device identifier on this table.
+ */
+export const productMetricsDaily = sqliteTable("product_metrics_daily", {
+  day: text("day").notNull(),
+  eventName: text("event_name").notNull(),
+  ageBand: text("age_band", { enum: ["13-15", "16-17", "18+"] }).notNull(),
+  surface: text("surface", { enum: ["web", "mobile"] }).notNull(),
+  sportId: text("sport_id").notNull().default("all"),
+  moduleId: text("module_id").notNull().default("all"),
+  outcome: text("outcome").notNull().default("all"),
+  eventCount: integer("event_count").notNull().default(0),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.day, table.eventName, table.ageBand, table.surface, table.sportId, table.moduleId, table.outcome] }),
+  index("idx_product_metrics_daily_day_event").on(table.day, table.eventName),
+]);

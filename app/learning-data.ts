@@ -1,4 +1,10 @@
-export type ChallengeType = "choice" | "truefalse" | "scenario" | "ordering" | "multi" | "hotspot";
+import { buildAdvancedPositionModules, primarySourceIdsForSport } from "./position-curriculum.ts";
+import { TACKLE_FOOTBALL_FIND_END_ZONE_PATH } from "./football-game-path.ts";
+import { CORE_SPORT_IDS } from "./core-course.ts";
+import { coreModulesForSport } from "./courses/index.ts";
+import type { FormationExercise } from "./course-formations.ts";
+
+export type ChallengeType = "choice" | "truefalse" | "scenario" | "ordering" | "multi" | "hotspot" | "cards" | "blank" | "match" | "formation";
 
 export type Challenge = {
   id: string;
@@ -16,6 +22,11 @@ export type Challenge = {
   youngHint?: string;
   xp: number;
   remediation?: Challenge;
+  advancedOnly?: boolean;
+  instruction?: string;
+  sentence?: string;
+  pairs?: Array<{ left: string; right: string }>;
+  formation?: FormationExercise;
 };
 
 export type LearningModule = {
@@ -28,16 +39,26 @@ export type LearningModule = {
   description: string;
   estimatedMinutes: number;
   challenges: Challenge[];
+  advancedOnly?: boolean;
+  minimumAgeBand?: QuizAgeBand;
+  sourceIds?: string[];
+  coreCourse?: boolean;
+  courseSection?: number;
+  courseUnit?: number;
+  ruleContext?: string;
+  checkpoint?: boolean;
+  teachingBrief?: string;
 };
 
 export type Position = {
   name: string;
+  abbreviation?: string;
   group: string;
   focus: string;
 };
 
 type IntroQuestion = {
-  id: "team-size" | "format" | "score" | "field";
+  id: string;
   type: "choice" | "hotspot";
   label: string;
   prompt: string;
@@ -67,6 +88,23 @@ export type Sport = {
 
 export type QuizAgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
 
+const AGE_BAND_RANK: Record<QuizAgeBand, number> = {
+  "7-9": 0,
+  "10-12": 1,
+  "13-15": 2,
+  "16-17": 3,
+  "18+": 4,
+};
+
+export function challengesForAge(module: LearningModule, ageBand: QuizAgeBand) {
+  if (module.coreCourse) return module.challenges;
+  const advancedPath = ageBand === "13-15" || ageBand === "16-17" || ageBand === "18+";
+  const available = module.challenges.filter((challenge) => !challenge.advancedOnly || advancedPath);
+  return ageBand === "7-9"
+    ? available.filter((challenge) => !["multi", "ordering"].includes(challenge.type)).slice(0, 3)
+    : available;
+}
+
 function stableHash(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -94,7 +132,8 @@ export function arrangeChallengeOptions(
   let options = [...new Set([...source, ...expected])];
   const salt = stableHash(`${sequenceKey}:${ageBand}`);
 
-  if (ageBand === "7-9" && !["multi", "ordering"].includes(challenge.type) && options.length > 2) {
+  if (challenge.type === "match") return challenge.options;
+  if (ageBand === "7-9" && !["multi", "ordering", "cards", "blank", "formation"].includes(challenge.type) && options.length > 2) {
     const distractors = rotate(options.filter((option) => !expected.includes(option)), salt);
     options = [...expected, ...distractors.slice(0, Math.max(0, 2 - expected.length))];
   }
@@ -116,6 +155,25 @@ export function arrangeChallengeOptions(
   return distractors;
 }
 
+export function remediationChallengeFor(challenge: Challenge, ageBand: QuizAgeBand): Challenge {
+  const young = ageBand === "7-9" || ageBand === "10-12";
+  const originalPrompt = young ? challenge.youngPrompt ?? challenge.prompt : challenge.prompt;
+  const coachFeedbackSource = young
+    ? challenge.youngHint ?? challenge.hint ?? challenge.youngExplanation ?? challenge.explanation
+    : challenge.hint ?? challenge.explanation;
+  const feedback = coachFeedbackSource.split(/(?<=[.!?])\s/)[0];
+
+  return {
+    ...challenge,
+    id: `${challenge.id.replace(/-remediate$/, "")}-remediate`,
+    label: `Replay · ${challenge.label}`,
+    prompt: `Coach feedback: ${feedback} Now make the read again: ${originalPrompt}`,
+    youngPrompt: `Coach feedback: ${feedback} Try it again: ${originalPrompt}`,
+    xp: Math.max(5, Math.round(challenge.xp * 0.6)),
+    remediation: undefined,
+  };
+}
+
 export const LEVELS = ["Rookie", "Starter", "Playmaker", "All-Star", "Elite", "Pro"];
 
 export const SPORTS: Sport[] = [
@@ -129,20 +187,20 @@ export const SPORTS: Sport[] = [
     variants: ["Women’s Tackle", "Men’s Tackle", "Youth Tackle"],
     pathNote: "Eleven-on-eleven tackle football with offensive, defensive, and special-teams position rooms.",
     positions: [
-      { name: "Quarterback", group: "Offense", focus: "read the defense and distribute the ball" },
+      { name: "Quarterback", abbreviation: "QB", group: "Offense", focus: "read the defense and distribute the ball" },
       { name: "Running Back", group: "Offense", focus: "press the run track and identify the open crease" },
-      { name: "Fullback", group: "Offense", focus: "lead block and adjust to the first dangerous defender" },
+      { name: "Fullback", abbreviation: "FB", group: "Offense", focus: "lead block and adjust to the first dangerous defender" },
       { name: "Wide Receiver", group: "Offense", focus: "create leverage and run routes at the correct depth" },
       { name: "Tight End", group: "Offense", focus: "balance route, run-block, and protection responsibilities" },
-      { name: "Left Tackle", group: "Offensive Line", focus: "protect the edge and maintain pocket width" },
-      { name: "Left Guard", group: "Offensive Line", focus: "secure the interior gap and create movement" },
-      { name: "Center", group: "Offensive Line", focus: "identify the front, snap cleanly, and set protection" },
-      { name: "Right Guard", group: "Offensive Line", focus: "secure the interior gap and create movement" },
-      { name: "Right Tackle", group: "Offensive Line", focus: "protect the edge and anchor against power" },
+      { name: "Left Tackle", abbreviation: "LT", group: "Offensive Line", focus: "protect the edge and maintain pocket width" },
+      { name: "Left Guard", abbreviation: "LG", group: "Offensive Line", focus: "secure the interior gap and create movement" },
+      { name: "Center", abbreviation: "C", group: "Offensive Line", focus: "identify the front, snap cleanly, and set protection" },
+      { name: "Right Guard", abbreviation: "RG", group: "Offensive Line", focus: "secure the interior gap and create movement" },
+      { name: "Right Tackle", abbreviation: "RT", group: "Offensive Line", focus: "protect the edge and anchor against power" },
       { name: "Defensive Tackle", group: "Defense", focus: "control an interior gap and disrupt the backfield" },
       { name: "Defensive End", group: "Defense", focus: "set the edge and pressure the passer" },
-      { name: "Inside Linebacker", group: "Defense", focus: "read run-pass keys and fit the correct gap" },
-      { name: "Outside Linebacker", group: "Defense", focus: "force the edge and handle coverage or pressure" },
+      { name: "Inside Linebacker", abbreviation: "ILB", group: "Defense", focus: "read run-pass keys and fit the correct gap" },
+      { name: "Outside Linebacker", abbreviation: "OLB", group: "Defense", focus: "force the edge and handle coverage or pressure" },
       { name: "Cornerback", group: "Defense", focus: "control receiver leverage and defend the route" },
       { name: "Safety", group: "Defense", focus: "read the formation and protect the deepest threat" },
       { name: "Kicker", group: "Special Teams", focus: "repeat a consistent approach and contact point" },
@@ -177,9 +235,9 @@ export const SPORTS: Sport[] = [
     ],
     introQuestions: [
       { id: "team-size", type: "choice", label: "Know the team", prompt: "Which statement is most accurate about flag football team size?", youngPrompt: "Flag football can use different team sizes. Which answer is true?", options: ["It depends on the ruleset; 5-on-5 and 7-on-7 are common", "Every league uses exactly 11 players per team", "Every league uses exactly 5 players per team", "Both teams share a total of 7 players"], correct: "It depends on the ruleset; 5-on-5 and 7-on-7 are common", explanation: "Flag football varies by ruleset: international competition uses 5-on-5, while 7-on-7 is also common in U.S. leagues.", youngExplanation: "Flag football often uses 5 players or 7 players on each team.", xp: 10 },
-      { id: "format", type: "choice", label: "Game structure", prompt: "Which statement best describes the flag football game clock?", options: ["Many leagues use two halves, but exact timing depends on the ruleset", "Every game has four 15-minute quarters", "Every game lasts exactly 90 minutes", "Flag football has nine innings"], correct: "Many leagues use two halves, but exact timing depends on the ruleset", explanation: "Many flag football formats use two halves, but the length and clock rules are set by the league or tournament.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "Which statement best describes the flag football game clock?", options: ["Two halves with timing set by the ruleset", "Four quarters with timing set by every league", "One running period with no clock stoppages", "Nine innings with no game clock"], correct: "Two halves with timing set by the ruleset", explanation: "Many flag football formats use two halves, but the length and clock rules are set by the league or tournament.", xp: 10 },
       { id: "score", type: "choice", label: "Scoring basics", prompt: "In many flag football rulesets, how many points is a touchdown worth?", options: ["6 points", "3 points", "2 points", "1 point"], correct: "6 points", explanation: "A touchdown is commonly worth 6 points, while the value and location of the try can vary by ruleset.", xp: 10 },
-      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which statement best describes a common flag football field?", options: ["It is usually shorter or narrower than a tackle field, with dimensions set by the ruleset", "It must always be a full 100 yards between goal lines", "It is a court with two baskets", "It is a diamond with four bases"], correct: "It is usually shorter or narrower than a tackle field, with dimensions set by the ruleset", explanation: "Flag football commonly uses a shorter or narrower field, but exact dimensions depend on whether the game is 5-on-5, 7-on-7, youth, or another format.", xp: 12 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which statement best describes a common flag football field?", options: ["Usually smaller than a tackle field, depending on ruleset", "Always 100 yards between goals, regardless of ruleset", "Always a basketball court with temporary end zones", "Usually a baseball diamond with shortened sidelines"], correct: "Usually smaller than a tackle field, depending on ruleset", explanation: "Flag football commonly uses a shorter or narrower field, but exact dimensions depend on whether the game is 5-on-5, 7-on-7, youth, or another format.", xp: 12 },
     ],
   },
   {
@@ -198,10 +256,10 @@ export const SPORTS: Sport[] = [
       { name: "Center", group: "Frontcourt", focus: "protect the rim and control the paint" },
     ],
     introQuestions: [
-      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard five-on-five basketball, how many players from each team are on the court during play?", youngPrompt: "How many players from one basketball team are on the court?", options: ["5 per team (10 players total)", "5 players total", "10 per team", "11 per team"], correct: "5 per team (10 players total)", explanation: "Each team has 5 players on the court, so a full five-on-five game has 10 players on the court.", youngExplanation: "Each team uses 5 players, making 10 players total.", xp: 10 },
+      { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard five-on-five basketball, how many players from each team are on the court during play?", youngPrompt: "How many players from one basketball team are on the court?", options: ["5 players per team, 10 total", "5 players shared by both teams", "10 players per team, 20 total", "11 players per team, 22 total"], correct: "5 players per team, 10 total", explanation: "Each team has 5 players on the court, so a full five-on-five game has 10 players on the court.", youngExplanation: "Each team uses 5 players, making 10 players total.", xp: 10 },
       { id: "format", type: "choice", label: "Game structure", prompt: "Under FIBA, NBA, and WNBA-style rules, how is a game divided?", options: ["Four quarters", "Two 45-minute halves", "Three periods", "Nine innings"], correct: "Four quarters", explanation: "FIBA, NBA, and WNBA games use four quarters; some competitions, including NCAA men’s basketball, use two halves.", xp: 10 },
       { id: "score", type: "choice", label: "Scoring basics", prompt: "How many points is a made shot from beyond the three-point line worth?", options: ["3 points", "2 points", "1 point", "6 points"], correct: "3 points", explanation: "A successful shot from beyond the three-point line is worth 3 points.", xp: 10 },
-      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a basketball court?", options: ["A rectangular court with one basket at each end", "A diamond with four bases", "A field with two end zones", "An oval centered on a pitch"], correct: "A rectangular court with one basket at each end", explanation: "Basketball is played on a rectangular court with one basket at each end.", xp: 12 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a basketball court?", options: ["A rectangular court with one basket at each end", "A rectangular field with one goal at each end", "An oval rink with one net at each end", "A diamond field with one base at each corner"], correct: "A rectangular court with one basket at each end", explanation: "Basketball is played on a rectangular court with one basket at each end.", xp: 12 },
     ],
   },
   {
@@ -225,7 +283,7 @@ export const SPORTS: Sport[] = [
       { id: "team-size", type: "choice", label: "Know the team", prompt: "In standard 11-a-side soccer, how many players may each team have on the field, including the goalkeeper?", youngPrompt: "How many players can one soccer team have on the field, including the goalkeeper?", options: ["11 players from each team (22 players total)", "11 players total between both teams", "22 players from each team", "10 players from each team, plus a shared goalkeeper"], correct: "11 players from each team (22 players total)", explanation: "Each team may have up to 11 players on the field, including one goalkeeper, so there can be 22 players total.", youngExplanation: "Each team can have 11 players, making 22 players total.", xp: 10 },
       { id: "format", type: "choice", label: "Game structure", prompt: "How is a standard adult soccer match normally divided?", options: ["Two 45-minute halves", "Four 15-minute quarters", "Three 20-minute periods", "Nine innings"], correct: "Two 45-minute halves", explanation: "A standard adult match has two 45-minute halves, plus time added by the referee for stoppages.", xp: 10 },
       { id: "score", type: "choice", label: "Scoring basics", prompt: "When the ball legally crosses the goal line between the posts, what is added to the score?", options: ["1 goal", "2 points", "3 points", "6 points"], correct: "1 goal", explanation: "Each legal goal adds 1 to that team’s score.", xp: 10 },
-      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a standard outdoor soccer field?", options: ["A rectangular field with one goal at each end", "A diamond with four bases", "A court divided by a net", "An ice rink divided by blue lines"], correct: "A rectangular field with one goal at each end", explanation: "Outdoor soccer is played on a rectangular field, also called a pitch, with one goal at each end.", xp: 12 },
+      { id: "field", type: "hotspot", label: "Know the arena", prompt: "Which description matches a standard outdoor soccer field?", options: ["A rectangular field with one goal at each end", "A rectangular court with one basket at each end", "An oval rink with one net at each end", "A diamond field with one base at each corner"], correct: "A rectangular field with one goal at each end", explanation: "Outdoor soccer is played on a rectangular field, also called a pitch, with one goal at each end.", xp: 12 },
     ],
   },
   {
@@ -688,6 +746,32 @@ export const SPORTS: Sport[] = [
       { id: "field", type: "hotspot", label: "Know the arena", prompt: "Where does a wrestling bout take place?", youngPrompt: "Where do wrestlers compete?", options: ["On a marked wrestling mat", "In a swimming lane", "On a baseball diamond", "Across a tennis net"], correct: "On a marked wrestling mat", explanation: "Wrestlers compete inside a marked circular area on a padded mat.", youngExplanation: "Wrestlers compete on a padded mat.", xp: 12 },
     ],
   },
+  {
+    id: "bowling",
+    name: "Bowling",
+    icon: "bowling",
+    mark: "BW",
+    color: "#a95d44",
+    softColor: "#f5e3da",
+    variants: ["Tenpin", "Singles", "Team / Baker"],
+    pathLabel: "SKILL",
+    pathQuestion: "Which bowling skill will you train?",
+    pathNote: "Learn the lane, ten pins, scoring, spare plans, repeatable deliveries, lane reading, and safe ball handling.",
+    positions: [
+      { name: "Control Player", group: "Delivery", focus: "repeat a balanced approach and roll toward a clear target" },
+      { name: "Power Player", group: "Delivery", focus: "blend speed, rotation, and pocket entry without losing control" },
+      { name: "Spare Shooter", group: "Scoring", focus: "read the remaining pins and choose a precise spare line" },
+      { name: "Lane Reader", group: "Strategy", focus: "watch ball motion and adjust feet, target, or equipment" },
+      { name: "Anchor Bowler", group: "Team", focus: "manage pressure and finish the lineup with a clear plan" },
+      { name: "Baker Teammate", group: "Team", focus: "communicate and execute an assigned frame in a shared team game" },
+    ],
+    introQuestions: [
+      { id: "team-size", type: "choice", label: "Know the game", prompt: "Which statement correctly describes tenpin bowling competition?", youngPrompt: "Can bowling be played alone and with a team?", options: ["Bowlers can compete individually or in team formats", "Every game requires exactly 11 players", "Only pairs may compete", "The teams share one bowling ball"], correct: "Bowlers can compete individually or in team formats", explanation: "Tenpin bowling includes individual competition and several team formats, including Baker games where teammates bowl assigned frames.", youngExplanation: "You can bowl by yourself or as part of a team.", xp: 10 },
+      { id: "format", type: "choice", label: "Game structure", prompt: "How many frames are in one standard tenpin bowling game?", youngPrompt: "How many frames make one bowling game?", options: ["10 frames", "4 frames", "7 frames", "20 frames"], correct: "10 frames", explanation: "A standard tenpin game has 10 frames. The tenth frame can include bonus deliveries after a strike or spare.", youngExplanation: "One bowling game has 10 frames.", xp: 10 },
+      { id: "score", type: "choice", label: "Scoring basics", prompt: "What is a strike in tenpin bowling?", youngPrompt: "What do you call knocking down all 10 pins with the first ball?", options: ["Knocking down all 10 pins with the first delivery", "Knocking down the last pin with the second delivery", "Rolling the ball into the gutter", "Leaving two pins standing"], advancedOptions: ["Knocking down all 10 pins with the first delivery", "Clearing the remaining pins with the second delivery", "Knocking down nine pins and receiving a bonus", "Knocking down all 10 pins across two frames"], correct: "Knocking down all 10 pins with the first delivery", explanation: "A strike clears all 10 pins on the first delivery of a frame and earns bonus scoring from the next two deliveries.", youngExplanation: "All 10 pins on the first ball is a strike.", xp: 10 },
+      { id: "field", type: "hotspot", label: "Know the lane", prompt: "What is the foul line in tenpin bowling?", youngPrompt: "Which line should a bowler stay behind when letting go of the ball?", options: ["The line separating the approach from the lane", "The line behind the pins", "The edge of the gutter", "The center arrow"], correct: "The line separating the approach from the lane", explanation: "The foul line marks the front of the approach. Crossing it during a delivery makes the pinfall on that ball count as zero.", youngExplanation: "Let go of the ball without stepping over the foul line.", xp: 12 },
+    ],
+  },
 ];
 
 const remediationPlayers: Challenge = {
@@ -1007,9 +1091,9 @@ const CENTER_CHALLENGES: Challenge[] = [
     conceptId: "center-front-id",
     type: "scenario",
     label: "Film room",
-    prompt: "You are the center. A nose tackle shades your right shoulder and a linebacker walks into the left A-gap. What should you identify first?",
-    options: ["The defensive front and protection point", "The crowd noise", "The receiver split", "The game uniform"],
-    correct: "The defensive front and protection point",
+    prompt: "A nose tackle shades right and a linebacker enters the left A-gap. What should the center identify first?",
+    options: ["The front and protection point", "The receiver split and route depth", "The runner's track and aiming point", "The clock and field position"],
+    correct: "The front and protection point",
     explanation: "The center must identify immediate threats and help set how the line will account for the front.",
     xp: 15,
   },
@@ -1067,6 +1151,244 @@ const CENTER_CHALLENGES: Challenge[] = [
     correct: "True",
     explanation: "The center must transition from snapping to blocking without losing leverage or timing.",
     xp: 10,
+  },
+];
+
+const INSIDE_LINEBACKER_CHALLENGES: Challenge[] = [
+  {
+    id: "inside-linebacker-role",
+    conceptId: "inside-linebacker-role",
+    type: "choice",
+    label: "Know your job",
+    prompt: "Which job best describes an inside linebacker?",
+    youngPrompt: "What is an inside linebacker's main job?",
+    options: ["Read run-pass keys and defend inside space", "Set the edge and rush on every snap", "Protect deep space and match wide receivers", "Control the line and absorb interior blocks"],
+    correct: "Read run-pass keys and defend inside space",
+    explanation: "Inside linebackers connect the defensive front to the coverage. Their exact assignment changes with the call, but they commonly read the backfield, fit interior runs, cover, or pressure.",
+    youngExplanation: "An inside linebacker watches the play, helps stop inside runs, and can help cover a receiver.",
+    xp: 10,
+  },
+  {
+    id: "inside-linebacker-alignment",
+    conceptId: "inside-linebacker-alignment",
+    type: "choice",
+    label: "Find the position",
+    prompt: "Where does an inside linebacker usually begin the play?",
+    youngPrompt: "Where does an inside linebacker usually stand?",
+    options: ["Off the line, behind the interior defensive front", "On the offensive line beside the center", "At the back of the opponent's end zone", "Outside the widest receiver on every snap"],
+    correct: "Off the line, behind the interior defensive front",
+    explanation: "An inside linebacker normally aligns off the ball behind the defensive front, where the player can see the backfield and move toward a run, coverage responsibility, or pressure call.",
+    youngExplanation: "The inside linebacker usually starts behind the big defensive linemen so the player can see the play develop.",
+    xp: 10,
+  },
+  {
+    id: "inside-linebacker-first-read",
+    conceptId: "inside-linebacker-first-read",
+    type: "scenario",
+    label: "Read the play",
+    prompt: "Before chasing the ball, what picture should an inside linebacker read?",
+    youngPrompt: "What should an inside linebacker look at before moving?",
+    options: ["The guards, backfield action, and assigned gap", "The cornerbacks, safety depth, and sideline space", "The receiver splits, route stems, and deep help", "The returner, kick path, and coverage lane"],
+    correct: "The guards, backfield action, and assigned gap",
+    explanation: "The guard triangle and backfield action help the linebacker recognize run or pass while staying responsible for the called gap or coverage.",
+    youngExplanation: "Watch the blockers and the backfield, then move to the space you are responsible for.",
+    xp: 12,
+  },
+  {
+    id: "inside-linebacker-mike",
+    conceptId: "linebacker-mike-name",
+    type: "choice",
+    label: "Learn the call",
+    prompt: "In traditional 4–3 terminology, which linebacker is usually called the MIKE?",
+    options: ["The middle linebacker", "The strong-side linebacker", "The weak-side linebacker", "The nickel defensive back"],
+    correct: "The middle linebacker",
+    explanation: "In a traditional 4–3 defense, MIKE identifies the middle linebacker. Teams can change labels and responsibilities, so the term must be taught in its scheme context.",
+    xp: 15,
+    advancedOnly: true,
+  },
+  {
+    id: "inside-linebacker-mike-communication",
+    conceptId: "linebacker-mike-communication",
+    type: "scenario",
+    label: "Make the call",
+    prompt: "Why is the MIKE often responsible for relaying the defensive call and alignment checks?",
+    options: ["Its central view helps organize the front", "It receives every call directly from officials", "It alone can change any defensive assignment", "Its position always controls the deepest coverage"],
+    correct: "Its central view helps organize the front",
+    explanation: "The MIKE often helps organize the front and communicate checks from a central position, although teams may assign communication differently.",
+    xp: 15,
+    advancedOnly: true,
+  },
+];
+
+const QUARTERBACK_COVERAGE_CHALLENGES: Challenge[] = [
+  {
+    id: "quarterback-two-high-shell",
+    conceptId: "quarterback-coverage-shell",
+    type: "scenario",
+    label: "Pre-snap shell",
+    prompt: "Two safeties align deep before the snap. What can the quarterback responsibly conclude?",
+    options: ["A two-high shell that can still rotate", "Confirmed Cover 2 with no rotation possible", "Confirmed man coverage with no deep help", "A pressure look that prevents zone coverage"],
+    correct: "A two-high shell that can still rotate",
+    explanation: "A two-high shell narrows the possibilities, but defenses disguise and rotate. The quarterback should use the pre-snap picture to form a hypothesis, then confirm safety and underneath-defender movement after the snap.",
+    xp: 15,
+  },
+  {
+    id: "quarterback-cover-2-id",
+    conceptId: "quarterback-cover-2",
+    type: "choice",
+    label: "Identify the coverage",
+    prompt: "After the snap, two safeties divide the deep field into halves while the cornerbacks defend the flats. Which basic coverage structure is this?",
+    options: ["Cover 2 zone", "Cover 3 zone", "Cover 1 man", "Cover 0 man pressure"],
+    correct: "Cover 2 zone",
+    explanation: "In basic Cover 2 zone, two safeties protect deep halves, cornerbacks handle the flats, and underneath defenders work hook and curl zones. Match and Tampa variations can change the details.",
+    xp: 15,
+  },
+  {
+    id: "quarterback-cover-3-id",
+    conceptId: "quarterback-cover-3",
+    type: "choice",
+    label: "Identify the coverage",
+    prompt: "Two cornerbacks take the outside thirds and one safety takes the middle third. What coverage is this?",
+    options: ["Cover 3 zone", "Cover 2 zone", "Cover 0 man", "Two-man coverage"],
+    correct: "Cover 3 zone",
+    explanation: "Basic Cover 3 divides the deep field into three zones, with underneath defenders protecting shorter areas. Pattern-match versions can look like man after routes distribute.",
+    xp: 15,
+  },
+  {
+    id: "quarterback-man-indicator",
+    conceptId: "quarterback-man-coverage",
+    type: "scenario",
+    label: "Man or zone?",
+    prompt: "A defender follows a receiver in motion, then matches the route. What does that suggest?",
+    options: ["Strong man evidence that still needs confirmation", "Definite Cover 3 with no possible rotation", "Definite zero coverage with no deep help", "An automatic throw to the motion receiver"],
+    correct: "Strong man evidence that still needs confirmation",
+    explanation: "A defender traveling with motion and matching the route is a useful man indicator. It does not, by itself, reveal whether a deep helper, robber, bracket, or pressure adjustment is present.",
+    xp: 15,
+  },
+];
+
+const QUARTERBACK_COVERAGE_DECISION_CHALLENGES: Challenge[] = [
+  {
+    id: "quarterback-confirm-post-snap",
+    conceptId: "quarterback-post-snap-confirmation",
+    type: "ordering",
+    label: "Run the read",
+    prompt: "Put the quarterback's coverage process in the best order.",
+    options: ["Build a pre-snap hypothesis", "Track safety rotation", "Confirm the movement key in the pass concept", "Throw only when timing and leverage are right"],
+    correct: ["Build a pre-snap hypothesis", "Track safety rotation", "Confirm the movement key in the pass concept", "Throw only when timing and leverage are right"],
+    explanation: "Coverage recognition is a sequence, not a guess from one still picture. The quarterback narrows the possibilities, confirms rotation, reads the defender built into the concept, and protects the football if leverage closes.",
+    xp: 18,
+  },
+  {
+    id: "quarterback-cover-3-reaction",
+    conceptId: "quarterback-cover-3-reaction",
+    type: "scenario",
+    label: "React to Cover 3",
+    prompt: "The defense rotates to basic Cover 3. What is the most disciplined next step for the quarterback?",
+    options: ["Read the concept's key and work the progression", "Attack the outside third before checking leverage", "Throw the shortest route before confirming rotation", "Leave the pocket before the rush declares"],
+    correct: "Read the concept's key and work the progression",
+    explanation: "Recognizing Cover 3 helps locate the likely three-deep and underneath structure, but the called concept determines the actual read. The quarterback still reads leverage and progression instead of choosing a universal Cover 3 throw.",
+    xp: 18,
+  },
+  {
+    id: "quarterback-cover-2-reaction",
+    conceptId: "quarterback-cover-2-reaction",
+    type: "scenario",
+    label: "React to Cover 2",
+    prompt: "The defense confirms basic Cover 2. Before attacking a high-low stretch near the sideline, what should the quarterback read?",
+    options: ["The flat defender and deep safety's leverage", "The receiver's speed and outside release", "The rush path after the route finishes", "The score instead of the coverage structure"],
+    correct: "The flat defender and deep safety's leverage",
+    explanation: "A high-low concept stresses an underneath defender, but the deep-half safety can cap the deeper route. The quarterback reads both levels and moves on if the throwing window is closed.",
+    xp: 18,
+  },
+  {
+    id: "quarterback-man-reaction",
+    conceptId: "quarterback-man-reaction",
+    type: "scenario",
+    label: "React to man",
+    prompt: "The defense confirms man coverage with a deep helper. What should guide the quarterback's decision?",
+    options: ["The concept, leverage, timing, and helper location", "The belief that every crossing route is open", "The planned throw regardless of pressure or leverage", "The deepest defender regardless of the route concept"],
+    correct: "The concept, leverage, timing, and helper location",
+    explanation: "Man coverage creates matchups, but help and leverage still matter. A skilled quarterback connects the called concept to the matchup and comes off the throw when the defender or helper wins position.",
+    xp: 18,
+  },
+];
+
+const OUTSIDE_LINEBACKER_CHALLENGES: Challenge[] = [
+  {
+    id: "outside-linebacker-role",
+    conceptId: "outside-linebacker-role",
+    type: "choice",
+    label: "Know your job",
+    prompt: "Which job best describes an outside linebacker?",
+    youngPrompt: "What is an outside linebacker's main job?",
+    options: ["Set the edge and execute the called assignment", "Control inside gaps and replace the nose tackle", "Protect deep middle and match the fastest receiver", "Align over center and change every protection call"],
+    correct: "Set the edge and execute the called assignment",
+    explanation: "Outside-linebacker responsibilities vary by scheme. The player may set the edge, cover, pressure the quarterback, or combine those jobs.",
+    youngExplanation: "An outside linebacker protects the outside, then follows the coach's call to stop the run, cover, or rush.",
+    xp: 10,
+  },
+  {
+    id: "outside-linebacker-contain",
+    conceptId: "outside-linebacker-contain",
+    type: "scenario",
+    label: "Protect the edge",
+    prompt: "A runner tries to bounce outside. What should the outside linebacker protect first when assigned contain?",
+    youngPrompt: "A runner goes outside. What space should the outside linebacker protect?",
+    options: ["The outside lane beyond the blocker", "The cutback lane behind the center", "The deep middle behind the safety", "The opposite edge before reading flow"],
+    correct: "The outside lane beyond the blocker",
+    explanation: "A contain or force assignment protects the outside lane and sends the runner back toward help, although the exact technique depends on the defensive call.",
+    youngExplanation: "Protect the outside so the runner cannot race around the whole defense.",
+    xp: 12,
+  },
+  {
+    id: "outside-linebacker-read",
+    conceptId: "outside-linebacker-read",
+    type: "choice",
+    label: "Read the play",
+    prompt: "What should an outside linebacker confirm before attacking?",
+    youngPrompt: "What should an outside linebacker look at first?",
+    options: ["The end blocker, backfield flow, and assignment", "The guard block, inside gap, and center movement", "The receiver stem, safety depth, and deep route", "The return path, kick height, and coverage lane"],
+    correct: "The end blocker, backfield flow, and assignment",
+    explanation: "The edge picture helps the linebacker distinguish a run, pass, block, or release without abandoning the called responsibility.",
+    youngExplanation: "Look at the outside blocker and the backfield, then do the job from the coach's call.",
+    xp: 12,
+  },
+  {
+    id: "outside-linebacker-sam",
+    conceptId: "linebacker-sam-name",
+    type: "choice",
+    label: "Learn the call",
+    prompt: "In traditional 4–3 terminology, which linebacker is usually called the SAM?",
+    options: ["The strong-side linebacker", "The weak-side linebacker", "The middle linebacker", "The free safety"],
+    correct: "The strong-side linebacker",
+    explanation: "SAM usually identifies the strong-side linebacker in a traditional 4–3 defense. The strong side is commonly set by the tight end or extra blocking surface, but each defense defines its strength call.",
+    xp: 15,
+    advancedOnly: true,
+  },
+  {
+    id: "outside-linebacker-will",
+    conceptId: "linebacker-will-name",
+    type: "choice",
+    label: "Learn the call",
+    prompt: "In traditional 4–3 terminology, which linebacker is usually called the WILL?",
+    options: ["The weak-side linebacker", "The strong-side linebacker", "The middle linebacker", "The strong safety"],
+    correct: "The weak-side linebacker",
+    explanation: "WILL usually identifies the weak-side linebacker, aligned away from the strength call. Modern defenses can use the WILL as one of two off-ball linebackers, so the label is scheme-specific.",
+    xp: 15,
+    advancedOnly: true,
+  },
+  {
+    id: "outside-linebacker-edge",
+    conceptId: "linebacker-edge-role",
+    type: "scenario",
+    label: "Name the role",
+    prompt: "Which label fits a defender who sets the edge and rushes from outside the tackle?",
+    options: ["EDGE defender", "Off-ball WILL linebacker", "Middle safety", "Interior nose tackle"],
+    correct: "EDGE defender",
+    explanation: "EDGE describes an outer-front role more than one universal roster position. Depending on the scheme, an EDGE can be listed as a 3–4 outside linebacker or a 4–3 defensive end.",
+    xp: 15,
+    advancedOnly: true,
   },
 ];
 
@@ -1263,15 +1585,114 @@ const POSITION_READS: Record<string, Record<string, string>> = {
     "Top Position": "hip control, opponent base, turn option, and legal pressure",
     "Bottom Position": "hand control, base, open escape side, and reversal chance",
   },
+  bowling: {
+    "Control Player": "approach rhythm, target board, ball path, and balanced finish",
+    "Power Player": "ball speed, rotation, pocket angle, and control at the foul line",
+    "Spare Shooter": "the pins still standing, safest conversion line, and breakpoint",
+    "Lane Reader": "where the ball starts, where it changes direction, and where it reaches the pins",
+    "Anchor Bowler": "score situation, lane reaction, pressure routine, and the team's next need",
+    "Baker Teammate": "assigned frame, teammate feedback, lane transition, and shared game plan",
+  },
 };
 
-function positionRead(sport: Sport, position: Position) {
+export function positionReadFor(sport: Sport, position: Position) {
   return POSITION_READS[sport.id]?.[position.name] ?? `the action developing around the ${position.group.toLowerCase()}`;
 }
 
-export function positionModuleId(sportId: string, positionName: string) {
-  if (sportId === "football" && positionName === "Center") return "fb-position-center-foundations";
-  return `${sportId}-position-${positionName.toLowerCase().replaceAll(" ", "-")}-intro`;
+const SPORT_DECISION_MIDDLE_STEPS: Record<string, [string, string]> = {
+  football: ["Confirm the read against the call", "Communicate any protection or assignment adjustment"],
+  "flag-football": ["Confirm the rush rule and available space", "Communicate any route or coverage adjustment"],
+  basketball: ["Confirm the defender's rotation", "Communicate the screen, cut, or coverage"],
+  soccer: ["Confirm pressure, support, and space", "Communicate the next action or cover"],
+  volleyball: ["Confirm the rotation and phase responsibility", "Call the ball, seam, block, or coverage"],
+  baseball: ["Confirm the count, outs, runners, and coverage", "Communicate the sign or fielding responsibility"],
+  softball: ["Confirm the count, outs, runners, and short-game threat", "Communicate the sign or fielding responsibility"],
+  hockey: ["Confirm puck support and the next danger", "Communicate pressure, support, or coverage"],
+  lacrosse: ["Confirm the slide, support, or available space", "Communicate the rotation or offensive action"],
+  rugby: ["Confirm numbers, gain-line pressure, and breakdown support", "Communicate the phase or defensive fold"],
+  "field-hockey": ["Confirm pressure, support, and the next lane", "Communicate the press, transfer, or cover"],
+  "water-polo": ["Confirm defender, goalkeeper, and clock position", "Communicate the drive, post, or defensive help"],
+  cricket: ["Confirm the match situation and field", "Communicate the running, bowling, or fielding plan"],
+  tennis: ["Confirm contact, opponent balance, and court position", "Choose the next pattern and recovery position"],
+  "track-field": ["Confirm the event phase, mark, pace, or rhythm", "Protect legal technique before adjusting performance"],
+  swimming: ["Confirm pace, stroke count, and wall distance", "Protect legal technique before adjusting effort"],
+  gymnastics: ["Confirm body position, rhythm, and apparatus relationship", "Protect safe legal technique before adding difficulty"],
+  pickleball: ["Confirm ball height, kitchen position, and balance", "Communicate middle or movement when playing doubles"],
+  badminton: ["Confirm shuttle height, court base, and opponent balance", "Communicate rotation or middle when playing doubles"],
+  golf: ["Confirm the target, expected miss, and club", "Commit to the shot before starting the motion"],
+  cycling: ["Confirm the line, surface grip, and rider movement", "Protect traction and spacing before the next move"],
+  mma: ["Confirm range, position, and the next legal threat", "Protect defense and base during the phase change"],
+  wrestling: ["Confirm balance, control, score, and boundary", "Chain to the next legal attack, escape, or turn"],
+  bowling: ["Confirm the target, ball path, and lane transition", "Choose one evidence-based delivery adjustment"],
+};
+
+export function positionDecisionStepsFor(sport: Sport, position: Position): [string, string, string, string] {
+  if (sport.id === "football" && position.name === "Quarterback") {
+    return [
+      "Identify the safety shell and box count",
+      "Confirm post-snap rotation and leverage",
+      "Communicate the protection or route adjustment",
+      "Execute the called progression",
+    ];
+  }
+  const middle = SPORT_DECISION_MIDDLE_STEPS[sport.id] ?? [
+    "Confirm how the situation is developing",
+    "Communicate or confirm the role adjustment",
+  ];
+  return [
+    `Read ${positionReadFor(sport, position)}`,
+    ...middle,
+    `Execute: ${position.focus}`,
+  ];
+}
+
+function safeSlug(value: string) {
+  return value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+const POSITION_ABBREVIATIONS: Record<string, string> = {
+  Quarterback: "QB",
+  Fullback: "FB",
+  "Left Tackle": "LT",
+  "Left Guard": "LG",
+  Center: "C",
+  "Right Guard": "RG",
+  "Right Tackle": "RT",
+  "Inside Linebacker": "ILB",
+  "Outside Linebacker": "OLB",
+  Cornerback: "CB",
+  Returner: "KR/PR",
+  "Center / Snapper": "C/S",
+};
+
+export function positionAbbreviation(position: Position) {
+  if (position.abbreviation) return position.abbreviation;
+  if (POSITION_ABBREVIATIONS[position.name]) return POSITION_ABBREVIATIONS[position.name];
+  return position.name
+    .split(/\s+|\//)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase())
+    .join("")
+    .slice(0, 5);
+}
+
+export function positionModuleId(sportId: string, positionName: string, level = 1) {
+  const baseId = sportId === "football" && positionName === "Center"
+    ? "fb-position-center-foundations"
+    : `${safeSlug(sportId)}-position-${safeSlug(positionName)}-intro`;
+  return level === 1 ? baseId : `${baseId}-level-${level}`;
+}
+
+const LEGACY_MODULE_ID_ALIASES: Record<string, string> = {
+  "flag-football-position-center-/-snapper-intro": "flag-football-position-center-snapper-intro",
+};
+
+export function migrateCompletedModuleIds(moduleIds: string[]) {
+  return [...new Set(moduleIds.map((id) => LEGACY_MODULE_ID_ALIASES[id] ?? id))];
 }
 
 export function buildPositionModule(sport: Sport, position: Position): LearningModule {
@@ -1286,23 +1707,105 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
       description: "Front identification, communication, snap mechanics, and interior responsibility.",
       estimatedMinutes: 5,
       challenges: CENTER_CHALLENGES,
+      sourceIds: primarySourceIdsForSport(sport.id),
+    };
+  }
+
+  if (sport.id === "football" && position.name === "Inside Linebacker") {
+    return {
+      id: positionModuleId(sport.id, position.name),
+      sportId: sport.id,
+      level: 1,
+      pathway: "position",
+      position: position.name,
+      title: "Inside Linebacker Foundations",
+      description: "Inside alignment, run-pass reads, gap responsibility, and advanced MIKE communication.",
+      estimatedMinutes: 5,
+      challenges: [
+        ...INSIDE_LINEBACKER_CHALLENGES.filter((challenge) => !challenge.advancedOnly),
+        {
+          id: "inside-linebacker-gap-discipline",
+          conceptId: "inside-linebacker-gap-discipline",
+          type: "scenario",
+          label: "Fit the run",
+          prompt: "The ball carrier starts outside, then cuts toward your assigned inside gap. What protects the defense?",
+          youngPrompt: "The runner cuts back inside. What should the linebacker protect?",
+          options: ["Fit the assigned gap with leverage", "Chase the first fake outside", "Run behind the deepest safety", "Leave the gap before the blocker commits"],
+          correct: "Fit the assigned gap with leverage",
+          explanation: "Gap discipline closes the space the run is attacking and keeps the linebacker connected to the rest of the defense.",
+          youngExplanation: "Protect your space so the runner cannot cut through it.",
+          xp: 12,
+        },
+      ],
+      sourceIds: primarySourceIdsForSport(sport.id),
+    };
+  }
+
+  if (sport.id === "football" && position.name === "Outside Linebacker") {
+    return {
+      id: positionModuleId(sport.id, position.name),
+      sportId: sport.id,
+      level: 1,
+      pathway: "position",
+      position: position.name,
+      title: "Outside Linebacker Foundations",
+      description: "Edge responsibility, run-pass reads, and advanced SAM, WILL, and EDGE distinctions.",
+      estimatedMinutes: 5,
+      challenges: [
+        ...OUTSIDE_LINEBACKER_CHALLENGES.filter((challenge) => !challenge.advancedOnly),
+        {
+          id: "outside-linebacker-leverage",
+          conceptId: "outside-linebacker-leverage",
+          type: "scenario",
+          label: "Use your help",
+          prompt: "When the call gives you outside force responsibility, where should you send the runner?",
+          youngPrompt: "You protect the outside. Where should the runner go?",
+          options: ["Back inside toward defensive help", "Around the corner into open space", "Straight toward the sideline official", "Anywhere, because force has no direction"],
+          correct: "Back inside toward defensive help",
+          explanation: "Outside leverage removes the corner and turns the run toward pursuing teammates, subject to the defense's specific force call.",
+          youngExplanation: "Keep the runner from getting outside and send the runner toward your teammates.",
+          xp: 12,
+        },
+      ],
+      sourceIds: primarySourceIdsForSport(sport.id),
     };
   }
 
   const responsibility = position.focus.charAt(0).toUpperCase() + position.focus.slice(1);
-  const read = positionRead(sport, position);
+  const read = positionReadFor(sport, position);
   const readableRead = read.charAt(0).toUpperCase() + read.slice(1);
-  const firstRead = read.split(",")[0];
-  const execution = `Use the read to ${position.focus}`;
+  const decisionSteps = positionDecisionStepsFor(sport, position);
   const relatedResponsibilities = sport.positions
     .filter((candidate) => candidate.name !== position.name)
     .map((candidate) => candidate.focus.charAt(0).toUpperCase() + candidate.focus.slice(1));
-  const advancedRoleOptions = [...new Set([
+  const roleOptions = [...new Set([
     responsibility,
     ...relatedResponsibilities,
-    `Support the ${position.group.toLowerCase()} without adjusting to the developing play`,
-    "Wait for another player to take control of the assignment",
+    "Protect the nearest space before reading the play",
+    "Support the action without owning a responsibility",
   ])].slice(0, 4);
+  const relatedReads = sport.positions
+    .filter((candidate) => candidate.name !== position.name)
+    .map((candidate) => positionReadFor(sport, candidate))
+    .map((candidateRead) => candidateRead.charAt(0).toUpperCase() + candidateRead.slice(1));
+  const readOptions = [...new Set([
+    readableRead,
+    ...relatedReads,
+    "The nearest matchup and the open space",
+    "The team shape and the next scoring threat",
+  ])].slice(0, 4);
+  const decisionOptions = [
+    "Update the read and protect the role plan",
+    "Keep the first read and force the action",
+    "Leave the role plan and chase the action",
+    "Wait for someone else to make the decision",
+  ];
+  const toolkitOptions = [
+    "Read the situation before acting",
+    "Execute the role plan",
+    "Force the first option available",
+    "Ignore a change in the situation",
+  ];
   return {
     id: positionModuleId(sport.id, position.name),
     sportId: sport.id,
@@ -1310,18 +1813,19 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
     pathway: "position",
     position: position.name,
     title: `${position.name} Foundations`,
-    description: `Read ${read}, make the call, and execute the ${position.name}'s job.`,
+    description: `Read ${read}, make the role-specific adjustment, and execute the ${position.name}'s responsibility.`,
     estimatedMinutes: 4,
+    sourceIds: primarySourceIdsForSport(sport.id),
     challenges: [
       {
         id: `${sport.id}-${position.name}-role`,
         conceptId: `${sport.id}-${position.name}-role`,
         type: "choice",
         label: "Know your job",
-        prompt: `Which description best matches the ${position.name}’s core responsibility?`,
+        prompt: `What is the ${position.name}'s main responsibility?`,
         youngPrompt: `What is the ${position.name}'s main job?`,
-        options: [responsibility, "Ignore team shape and follow the ball", "Focus only on the scoreboard", "Wait for a teammate to make every call"],
-        advancedOptions: advancedRoleOptions,
+        options: roleOptions,
+        advancedOptions: roleOptions,
         correct: responsibility,
         explanation: `At its core, the ${position.name} must ${position.focus}.`,
         youngExplanation: `The ${position.name}'s main job is to ${position.focus}.`,
@@ -1331,27 +1835,27 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
         id: `${sport.id}-${position.name}-awareness`,
         conceptId: `${sport.id}-${position.name}-awareness`,
         type: "choice",
-        label: "Spot the first clue",
-        prompt: `What should the ${position.name} read before committing to the play?`,
+        label: "Make the first read",
+        prompt: `What should the ${position.name} read first?`,
         youngPrompt: `What should a ${position.name} look at first?`,
-        options: [readableRead, "Only the scoreboard", "Only the nearest teammate", "The crowd and the sideline"],
-        advancedOptions: [readableRead, `Only ${firstRead}, without checking the rest of the play`, `The original plan, even when ${firstRead} changes`, "The nearest matchup after the decision window has already closed"],
+        options: readOptions,
+        advancedOptions: readOptions,
         correct: readableRead,
         explanation: `That picture—${read}—gives the ${position.name} the information needed to act early instead of guessing.`,
-        youngExplanation: `Looking at ${read} helps the ${position.name} make a smart choice.`,
+        youngExplanation: `Reading ${read} helps the ${position.name} choose the next action.`,
         xp: 12,
       },
       {
         id: `${sport.id}-${position.name}-decision`,
         conceptId: `${sport.id}-${position.name}-decision`,
         type: "scenario",
-        label: "Make the game call",
-        prompt: `You are the ${position.name}. The picture around you changes after you read ${read}. Which response best protects your assignment?`,
-        youngPrompt: `You are the ${position.name}, and the play changes. What is your best move?`,
-        options: [execution, "Chase the action and leave the assignment", "Freeze until a teammate solves it", "Repeat the original action without looking"],
-        advancedOptions: [execution, "Stay with the original action even after the read changes", "Leave the primary assignment early to help the nearest teammate", "Wait for a teammate to solve the change before reacting"],
-        correct: execution,
-        explanation: `The read only matters when it connects to the job. The smart response is to ${position.focus}.`,
+        label: "Adjust the read",
+        prompt: `The first read changes. What should the ${position.name} do?`,
+        youngPrompt: `The play changes. What should the ${position.name} do?`,
+        options: decisionOptions,
+        advancedOptions: decisionOptions,
+        correct: "Update the read and protect the role plan",
+        explanation: `The ${position.name} should update the picture, then use it to ${position.focus}.`,
         youngExplanation: `Use what you see, then ${position.focus}.`,
         xp: 15,
       },
@@ -1359,31 +1863,171 @@ export function buildPositionModule(sport: Sport, position: Position): LearningM
         id: `${sport.id}-${position.name}-tools`,
         conceptId: `${sport.id}-${position.name}-tools`,
         type: "multi",
-        label: "Build your toolkit",
-        prompt: `Which TWO habits belong in a high-IQ ${position.name}'s toolkit?`,
-        youngPrompt: `Pick TWO things that help a ${position.name} play smart.`,
-        options: [`Read ${read}`, responsibility, "Ignore teammates' calls", "Watch only the scoreboard"],
-        advancedOptions: [`Read ${read}`, responsibility, `React to ${firstRead} before confirming the full picture`, "Change the assignment without communicating the adjustment"],
-        correct: [`Read ${read}`, responsibility],
+        label: "Use the decision process",
+        prompt: `Which TWO habits help a ${position.name} decide well?`,
+        youngPrompt: `Pick TWO smart habits for a ${position.name}.`,
+        options: toolkitOptions,
+        advancedOptions: toolkitOptions,
+        correct: ["Read the situation before acting", "Execute the role plan"],
         explanation: `Strong position play combines information—reading ${read}—with responsibility: ${position.focus}.`,
-        youngExplanation: `A smart ${position.name} looks for the right clue and does the position's job.`,
+        youngExplanation: `The ${position.name} reads the action and carries out the position's responsibility.`,
         xp: 15,
       },
       {
         id: `${sport.id}-${position.name}-sequence`,
         conceptId: `${sport.id}-${position.name}-process`,
         type: "ordering",
-        label: "Run the rep",
-        prompt: `Tap the ${position.name}'s decision steps in the best order.`,
+        label: "Sequence the decision",
+        prompt: `Put the ${position.name}'s decision steps in order.`,
         youngPrompt: `Tap the steps in order to help the ${position.name} make the play.`,
-        options: ["Look for the most important clue", "Decide what the clue means", "Communicate the plan", "Do your job"],
-        correct: ["Look for the most important clue", "Decide what the clue means", "Communicate the plan", "Do your job"],
-        explanation: `Position IQ is a repeatable process: identify the most important clue (${read}), decide what it means, communicate the plan, then ${position.focus}.`,
-        youngExplanation: `Look for a clue, understand it, call it out, then do your job.`,
+        options: decisionSteps,
+        correct: decisionSteps,
+        explanation: `The ${position.name}'s process uses ${read} and the accepted ${sport.name} sequence for the role.`,
+        youngExplanation: `Read the action, make the decision, and carry out the role.`,
         xp: 15,
       },
     ],
   };
+}
+
+export function buildPositionModules(sport: Sport, position: Position): LearningModule[] {
+  const foundation = buildPositionModule(sport, position);
+  const advanced = buildAdvancedPositionModules({
+    sport,
+    position,
+    read: positionReadFor(sport, position),
+    moduleId: (level) => positionModuleId(sport.id, position.name, level),
+  });
+
+  if (sport.id === "football" && position.name === "Quarterback") {
+    return [
+      foundation,
+      {
+        id: positionModuleId(sport.id, position.name, 2),
+        sportId: sport.id,
+        level: 2,
+        pathway: "position",
+        position: position.name,
+        title: "Coverage Recognition",
+        description: "Build a pre-snap hypothesis, then identify man, Cover 2, and Cover 3 from post-snap structure.",
+        estimatedMinutes: 6,
+        challenges: QUARTERBACK_COVERAGE_CHALLENGES,
+        advancedOnly: true,
+        minimumAgeBand: "13-15",
+        sourceIds: ["usa-football-qb-coverages", "usa-football-qb-coverage-formula"],
+      },
+      {
+        id: positionModuleId(sport.id, position.name, 3),
+        sportId: sport.id,
+        level: 3,
+        pathway: "position",
+        position: position.name,
+        title: "Coverage Decisions",
+        description: "Connect the coverage picture to the called concept, movement key, leverage, and progression.",
+        estimatedMinutes: 7,
+        challenges: QUARTERBACK_COVERAGE_DECISION_CHALLENGES,
+        advancedOnly: true,
+        minimumAgeBand: "16-17",
+        sourceIds: ["usa-football-qb-coverages", "usa-football-qb-coverage-formula"],
+      },
+    ];
+  }
+
+  if (sport.id === "football" && position.name === "Inside Linebacker") {
+    return [foundation, {
+      id: positionModuleId(sport.id, position.name, 2),
+      sportId: sport.id,
+      level: 2,
+      pathway: "position",
+      position: position.name,
+      title: "MIKE Communication & Front Structure",
+      description: "Use traditional 4–3 MIKE language, organize the front, and separate a scheme label from a universal rule.",
+      estimatedMinutes: 5,
+      challenges: [
+        ...INSIDE_LINEBACKER_CHALLENGES.filter((challenge) => challenge.advancedOnly),
+        {
+          id: "inside-linebacker-front-check",
+          conceptId: "inside-linebacker-front-check",
+          type: "scenario",
+          label: "Organize the front",
+          prompt: "The offense shifts and creates a new extra gap. What is the MIKE's most useful response?",
+          options: ["Communicate the strength or front check so every gap remains assigned", "Chase the shifting player without making a call", "Move every defender to the same side", "Ignore the shift because the huddle call cannot change"],
+          correct: "Communicate the strength or front check so every gap remains assigned",
+          explanation: "A formation change can alter the run surface. The exact check is scheme-specific, but the MIKE must help the defense keep every gap and coverage responsibility connected.",
+          xp: 15,
+          advancedOnly: true,
+        },
+        {
+          id: "inside-linebacker-play-action",
+          conceptId: "inside-linebacker-play-action",
+          type: "scenario",
+          label: "Honor run and pass",
+          prompt: "The guard shows run, but your assigned receiver releases. What should you do?",
+          options: ["Confirm the read and keep coverage leverage", "Attack the line and abandon the coverage call", "Turn from the receiver and follow the guard", "Wait for the pass before entering coverage"],
+          correct: "Confirm the read and keep coverage leverage",
+          explanation: "A linebacker must trigger fast without letting one run key erase a pass responsibility. The call and the full read determine the response.",
+          xp: 16,
+          advancedOnly: true,
+        },
+      ],
+      advancedOnly: true,
+      minimumAgeBand: "13-15",
+      sourceIds: ["nfl-football-terms", "nfl-2025-rules"],
+    }, advanced[1]];
+  }
+
+  if (sport.id === "football" && position.name === "Outside Linebacker") {
+    return [foundation, {
+      id: positionModuleId(sport.id, position.name, 2),
+      sportId: sport.id,
+      level: 2,
+      pathway: "position",
+      position: position.name,
+      title: "SAM, WILL & EDGE",
+      description: "Recognize strong and weak calls, then distinguish an off-ball outside linebacker from an EDGE defender.",
+      estimatedMinutes: 6,
+      challenges: [
+        ...OUTSIDE_LINEBACKER_CHALLENGES.filter((challenge) => challenge.advancedOnly),
+        {
+          id: "outside-linebacker-strength-check",
+          conceptId: "outside-linebacker-strength-check",
+          type: "scenario",
+          label: "Reset the strength",
+          prompt: "The tight end motions across the formation and your defense sets strength to the tight end. What must happen?",
+          options: ["Communicate the new strength and execute the scheme's SAM/WILL adjustment", "Keep every label and alignment unchanged without communicating", "Both outside linebackers follow the tight end", "The MIKE leaves the middle to become the new cornerback"],
+          correct: "Communicate the new strength and execute the scheme's SAM/WILL adjustment",
+          explanation: "When a defense keys strength to the tight end, motion can change the call. The exact rotation is scheme-specific, but it must be communicated and preserve every assignment.",
+          xp: 16,
+          advancedOnly: true,
+        },
+      ],
+      advancedOnly: true,
+      minimumAgeBand: "13-15",
+      sourceIds: ["nfl-football-terms", "nfl-2025-rules"],
+    }, advanced[1]];
+  }
+
+  return [foundation, ...advanced];
+}
+
+const POSITION_MODULE_CACHE = new Map<string, LearningModule[]>();
+
+export function positionModulesForPosition(sport: Sport, position: Position, ageBand?: QuizAgeBand) {
+  const cacheKey = `${sport.id}:${position.name}:${ageBand ?? "all"}`;
+  const cached = POSITION_MODULE_CACHE.get(cacheKey);
+  if (cached) return cached;
+  const allKey = `${sport.id}:${position.name}:all`;
+  const modules = POSITION_MODULE_CACHE.get(allKey) ?? buildPositionModules(sport, position);
+  POSITION_MODULE_CACHE.set(allKey, modules);
+  const eligible = ageBand
+    ? modules.filter((module) => !module.minimumAgeBand || AGE_BAND_RANK[ageBand] >= AGE_BAND_RANK[module.minimumAgeBand])
+    : modules;
+  POSITION_MODULE_CACHE.set(cacheKey, eligible);
+  return eligible;
+}
+
+export function positionModulesForSport(sport: Sport, ageBand?: QuizAgeBand) {
+  return sport.positions.flatMap((position) => positionModulesForPosition(sport, position, ageBand));
 }
 
 export function sportIntroModuleId(sportId: string) {
@@ -1399,6 +2043,7 @@ export function buildSportIntroModule(sport: Sport): LearningModule {
     title: `How ${sport.name} Works`,
     description: "Learn the goal, participants, playing area, scoring, and basic flow before making game decisions.",
     estimatedMinutes: 3,
+    sourceIds: primarySourceIdsForSport(sport.id),
     challenges: sport.introQuestions.map((question) => ({
       ...question,
       id: `${sport.id}-${question.id}`,
@@ -1425,14 +2070,14 @@ export function buildPositionsIntroModule(sport: Sport): LearningModule {
       id: `${sport.id}-positions-${group.toLowerCase().replaceAll(" ", "-")}`,
       conceptId: `${sport.id}-position-groups`,
       type: "choice" as const,
-      label: "Meet the team",
+      label: "Meet the roles",
       prompt: `Which choice belongs to the ${group} group in ${sport.name}?`,
       youngPrompt: `Tap one from ${group}.`,
       options: [featured.name, ...distractors.map((position) => position.name)],
       correct: featured.name,
-      explanation: `${featured.name} belongs to ${group}. Its job includes helping the team ${featured.focus}.`,
-      youngExplanation: `${featured.name} is in ${group}. It helps the team ${featured.focus}.`,
-      hint: `Look for the role that shares the ${group} team's job.`,
+      explanation: `${featured.name} belongs to ${group}. The role focuses on how to ${featured.focus}.`,
+      youngExplanation: `${featured.name} is in ${group}. Its focus is to ${featured.focus}.`,
+      hint: `Look for the role that shares the ${group} responsibility.`,
       youngHint: `Look for ${featured.name}.`,
       xp: 10,
     };
@@ -1448,13 +2093,73 @@ export function buildPositionsIntroModule(sport: Sport): LearningModule {
       ? "Learn the major role groups and what each one helps an athlete or team do."
       : "Learn the different ways athletes compete in this sport.",
     estimatedMinutes: 4,
+    sourceIds: primarySourceIdsForSport(sport.id),
     challenges,
   };
 }
 
+const GENERAL_MODULE_CACHE = new Map<string, LearningModule[]>();
+
+// Keep the full library and saved progress; only these five sports are published
+// in the current learning experience.
+export const FEATURED_SPORTS = CORE_SPORT_IDS.map((id) => SPORTS.find((sport) => sport.id === id)!);
+
 export function generalModulesForSport(sport: Sport): LearningModule[] {
-  const fundamentals = sport.id === "football" ? FOOTBALL_MODULES : [buildSportIntroModule(sport)];
-  return sport.positions.length ? [...fundamentals, buildPositionsIntroModule(sport)] : fundamentals;
+  const core = coreModulesForSport(sport.id);
+  if (core) return core;
+  const cached = GENERAL_MODULE_CACHE.get(sport.id);
+  if (cached) return cached;
+  const modules = sport.id === "football"
+    ? TACKLE_FOOTBALL_FIND_END_ZONE_PATH.nodes.map((node) => node.module)
+    : sport.positions.length
+      ? [buildSportIntroModule(sport), buildPositionsIntroModule(sport)]
+      : [buildSportIntroModule(sport)];
+  const sourceIds = primarySourceIdsForSport(sport.id);
+  const sourced = modules.map((module) => ({ ...module, sourceIds: module.sourceIds?.length ? module.sourceIds : sourceIds }));
+  GENERAL_MODULE_CACHE.set(sport.id, sourced);
+  return sourced;
+}
+
+export type LearningModulePath = {
+  id: string;
+  label: string;
+  moduleIds: string[];
+};
+
+export function learningModulePathsForSport(sport: Sport, ageBand: QuizAgeBand): LearningModulePath[] {
+  return [
+    {
+      id: `${sport.id}-general`,
+      label: "General IQ",
+      moduleIds: generalModulesForSport(sport).map((module) => module.id),
+    },
+    ...sport.positions.map((position) => ({
+      id: `${sport.id}-${safeSlug(position.name)}`,
+      label: position.name,
+      moduleIds: positionModulesForPosition(sport, position, ageBand).map((module) => module.id),
+    })),
+  ];
+}
+
+export function eligibleLearningModulesForSport(sport: Sport, ageBand: QuizAgeBand) {
+  return [generalModulesForSport(sport), ...sport.positions.map((position) => positionModulesForPosition(sport, position, ageBand))].flat();
+}
+
+export function sportProgressSummary(sport: Sport, ageBand: QuizAgeBand, completedModuleIds: string[]) {
+  const completed = new Set(migrateCompletedModuleIds(completedModuleIds));
+  const eligible = coreModulesForSport(sport.id) ?? eligibleLearningModulesForSport(sport, ageBand);
+  let firstUnfinished = false;
+  const completedModules = eligible.filter((module) => {
+    if (module.coreCourse && (firstUnfinished || !completed.has(module.id))) { firstUnfinished = true; return false; }
+    return completed.has(module.id);
+  }).length;
+  const totalModules = eligible.length;
+  return {
+    completedModules,
+    totalModules,
+    percent: totalModules ? Math.round((completedModules / totalModules) * 100) : 0,
+    started: completedModules > 0,
+  };
 }
 
 export const BADGES = [

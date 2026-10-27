@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { createLegalAcceptance, type LegalAcceptance } from "./product-governance";
 
 export type PrivacyAgeBand = "7-9" | "10-12" | "13-15" | "16-17" | "18+";
 export type AccountKind = "guest" | "self" | "child";
@@ -27,11 +28,11 @@ declare global {
 }
 
 const AGE_CHOICES: Array<{ value: PrivacyAgeBand; label: string; title: string; note: string }> = [
-  { value: "7-9", label: "AGES 7–9", title: "Play & Discover", note: "Visual lessons · no timer" },
-  { value: "10-12", label: "AGES 10–12", title: "Build the Basics", note: "Guided lessons · 60 seconds" },
-  { value: "13-15", label: "AGES 13–15", title: "Read the Game", note: "Game scenarios · 45 seconds" },
-  { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Deeper tactics · 35 seconds" },
-  { value: "18+", label: "AGES 18+", title: "Full Game IQ", note: "Complete detail · 30 seconds" },
+  { value: "7-9", label: "AGES 6–9", title: "Play & Discover", note: "Simple words · time to think" },
+  { value: "10-12", label: "AGES 10–12", title: "Build the Basics", note: "Guided practice · your pace" },
+  { value: "13-15", label: "AGES 13–15", title: "Read the Game", note: "Build knowledge · your pace" },
+  { value: "16-17", label: "AGES 16–17", title: "Compete & Lead", note: "Practice decisions · your pace" },
+  { value: "18+", label: "AGES 18+", title: "Full Game IQ", note: "New fans and experienced players" },
 ];
 
 const PROVIDERS: Array<{ id: Provider; label: string; mark: string }> = [
@@ -54,7 +55,7 @@ const EMPTY_CONFIG: AccountConfig = {
 };
 
 export function PrivacyGate({ onContinue }: {
-  onContinue: (result: { ageBand: PrivacyAgeBand; accountKind: AccountKind; consentState: ConsentState }) => void;
+  onContinue: (result: { ageBand: PrivacyAgeBand; accountKind: AccountKind; consentState: ConsentState; legalAcceptance: LegalAcceptance }) => void;
 }) {
   const [step, setStep] = useState<"age" | "account">("age");
   const [ageBand, setAgeBand] = useState<PrivacyAgeBand | null>(null);
@@ -63,6 +64,7 @@ export function PrivacyGate({ onContinue }: {
   const [humanToken, setHumanToken] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const turnstileHost = useRef<HTMLDivElement | null>(null);
   const widgetId = useRef<string | undefined>(undefined);
   const isChild = ageBand === "7-9" || ageBand === "10-12";
@@ -145,8 +147,9 @@ export function PrivacyGate({ onContinue }: {
           <div className="privacy-age-grid">
             {AGE_CHOICES.map((choice) => <button type="button" key={choice.value} className={ageBand === choice.value ? "active" : ""} onClick={() => setAgeBand(choice.value)} aria-pressed={ageBand === choice.value}><span>{choice.label}</span><strong>{choice.title}</strong><small>{choice.note}</small><i>{ageBand === choice.value ? "✓" : "→"}</i></button>)}
           </div>
-          <button className="privacy-primary" disabled={!ageBand} onClick={() => setStep("account")}>Continue <span>→</span></button>
-          <small className="privacy-footnote">Age controls reading level, visuals, and timer. Sport experience controls difficulty.</small>
+          <label className="privacy-acceptance"><input type="checkbox" checked={legalAccepted} onChange={(event) => setLegalAccepted(event.target.checked)} /><span>I am the player or responsible adult. I have read the <Link href="/privacy">Privacy Notice</Link> and agree to the <Link href="/terms">Terms of Use</Link>.</span></label>
+          <button className="privacy-primary" disabled={!ageBand || !legalAccepted} onClick={() => setStep("account")}>Continue <span>→</span></button>
+          <small className="privacy-footnote">Age sets reading support. Your progress builds game knowledge.</small>
           <nav className="privacy-legal-links" aria-label="Legal"><Link href="/privacy">Privacy Notice</Link><Link href="/terms">Terms of Use</Link></nav>
         </section>
         <aside className="privacy-art" aria-hidden="true"><div className="privacy-orbit"><i /><i /><i /></div><strong>LEARN</strong><span>PLAY</span><b>GROW</b></aside>
@@ -167,8 +170,8 @@ export function PrivacyGate({ onContinue }: {
             <div ref={turnstileHost} className="turnstile-slot" aria-label="Human verification" />
             <button className="privacy-provider privacy-provider--parent" disabled={!humanToken || busy} onClick={() => openVerified(config.parentConsent.url)}><span>★</span><strong>Parent setup & consent</strong><small>Adult information only</small></button>
           </> : <div className="privacy-setup-note"><strong>PARENT ACCOUNTS ARE IN SAFE SETUP MODE</strong><span>The game will not collect family information until secure sign-in, consent delivery, and bot protection keys are connected.</span></div>}
-          <button className="privacy-primary" onClick={() => onContinue({ ageBand: ageBand as PrivacyAgeBand, accountKind: "child", consentState: "local-only" })}>Play privately on this device <span>→</span></button>
-          <small className="privacy-footnote">Device play stays on this device. It does not create an online child account.</small>
+          <button className="privacy-primary" onClick={() => onContinue({ ageBand: ageBand as PrivacyAgeBand, accountKind: "child", consentState: "local-only", legalAcceptance: createLegalAcceptance() })}>Play privately on this device <span>→</span></button>
+          <small className="privacy-footnote">Device play stays on this device. This acknowledgement does not create an online child account or replace verifiable parental consent.</small>
         </> : <>
           <span className="privacy-kicker">SAVE YOUR PROGRESS ANYWHERE</span>
           <h1>Choose how<br /><em>you’ll play.</em></h1>
@@ -182,7 +185,7 @@ export function PrivacyGate({ onContinue }: {
           </div>
           {config.mode === "setup" && <div className="privacy-setup-note"><strong>ONLINE ACCOUNTS ARE IN SAFE SETUP MODE</strong><span>Apple, Google, Facebook, email, and CAPTCHA controls are built into this flow but stay off until the provider keys are connected.</span></div>}
           {message && <p className="privacy-error" role="alert">{message}</p>}
-          <button className="privacy-primary" onClick={() => onContinue({ ageBand: ageBand as PrivacyAgeBand, accountKind: "guest", consentState: "not-required" })}>Continue without an account <span>→</span></button>
+          <button className="privacy-primary" onClick={() => onContinue({ ageBand: ageBand as PrivacyAgeBand, accountKind: "guest", consentState: "not-required", legalAcceptance: createLegalAcceptance() })}>Continue without an account <span>→</span></button>
           <small className="privacy-footnote">Guest progress stays on this device. You can connect an account later.</small>
         </>}
         <nav className="privacy-legal-links" aria-label="Legal"><Link href="/privacy">Privacy Notice</Link><Link href="/terms">Terms of Use</Link></nav>

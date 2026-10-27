@@ -38,4 +38,13 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
+/.audit/
+/build/
+/mobile/build/
+*.xcarchive/
+*.ipa
+*.p8
+*.p12
+*.key
+*.mobileprovision
 *.tsbuildinfo

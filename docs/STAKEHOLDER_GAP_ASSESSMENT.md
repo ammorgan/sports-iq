@@ -1,6 +1,6 @@
 # RepQuest Stakeholder Gap Assessment
 
-**Assessment date:** August 10, 2026
+**Assessment date:** August 16, 2026
 
 **Stage:** Product beta
 
@@ -22,7 +22,7 @@ RepQuest has a differentiated, worthwhile concept: beginner-first sports literac
 
 ### 1. Curriculum depth and instructional sequencing — critical
 
-Some modules still behave like quizzes with explanations rather than teaching experiences. Every sport needs a reviewed concept map, explicit vocabulary lesson, positions/events introduction, diagrams, examples, and checks tied to taught material. Position IQ should not open before the learner understands the role map.
+The platform now gives all 152 positions/events an age-aware foundation, tactical, and mastery path, and every advanced quiz is preceded by a lesson built from the assessed decisions. Position IQ remains immediately selectable and later levels require the prior level only within that role. The remaining critical gap is editorial validation: generated modules need named sport-SME approval, diagrams where spatial understanding matters, reading-level validation, and evidence that each check was explicitly taught.
 
 ### 2. Early-reader experience — critical
 
@@ -38,7 +38,7 @@ Draft Terms and Privacy pages now exist, but they require the operator’s legal
 
 ### 5. Content credibility and media rights — high
 
-Several clips were not distinctive enough to teach the named sport. MMA and wrestling mappings have been removed rather than mislabeled. Flag football still needs unmistakable rights-cleared footage with visible flag belts. Every rule and clip needs provenance, review status, and a re-review date.
+All 24 sports now have registered governing-source anchors and every generated module declares its source IDs. This is traceability, not sport-SME approval. Wrestling remains unmapped, MMA is explicitly labeled as a striking example rather than a complete overview, water polo and gymnastics remain hidden pending review, and matching flag-football and lacrosse excerpts are quarantined outside distributable assets. The remaining library is held to the same standard: exact sport match, useful six-to-eight-second teaching moment, provenance, publication date, review status, and re-review date.
 
 ### 6. Information density and next-action clarity — high
 
@@ -46,7 +46,7 @@ The main home direction is intuitive, but several sport screens contain too much
 
 ### 7. Progress integrity and progression design — high
 
-XP and progress are primarily client-controlled in the beta. That is acceptable for private guest play but not for public leaderboards. Cloud progress needs idempotent server-owned events, migration rules, replay limits, and explicit mastery criteria.
+The beta now uses one age-aware eligible catalog for web/mobile percentages, sequential prerequisites within each general or specialized path, explicit legacy-ID migration, and first-completion-only XP. XP and progress are still client-controlled, which is acceptable only for private guest play. Cloud progress still needs idempotent server-owned events, replay limits, fraud controls, and explicit mastery criteria before public leaderboards.
 
 ### 8. Accessibility and inclusive design — high
 
@@ -82,8 +82,8 @@ Before launch, RepQuest needs content administration, review workflows, monitori
 
 ## Intuitiveness verdict
 
-The home selection and brand direction are intuitive. The complete learning journey is not yet self-explanatory for a true beginner or early reader. The new visible Start action and locked beginner-to-position sequence materially improve it, but the next usability milestone is visual instruction—not more text or more sports.
+The home selection and brand direction are intuitive. General IQ and Position/Event IQ are now clearly parallel choices, and real role roadmaps replace placeholder future cards. The complete journey still needs observed usability testing with true beginners and early readers. The next usability milestone is visual instruction and comprehension evidence—not more text or more sports.
 
 ## Investment recommendation
 
-Continue the beta with a focused quality phase. Prioritize five representative sports—tackle football, flag football, basketball, soccer, and MMA—and make their beginner journeys exemplary before expanding breadth. In parallel, finish the legal/operator decisions and secure account architecture. A stakeholder should fund curriculum quality, youth UX research, and privacy/security infrastructure ahead of additional cosmetic features.
+Continue the beta with a release-gate quality phase. The shared depth architecture now covers all sports; validate it by sampling every sport and requiring deeper SME sign-off for high-variance disciplines and roles. In parallel, finish legal/operator decisions and secure account architecture. A stakeholder should fund curriculum review, diagrams, youth UX research, media acquisition, and privacy/security infrastructure ahead of additional cosmetic features.

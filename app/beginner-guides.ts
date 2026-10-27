@@ -316,6 +316,20 @@ export const BEGINNER_GUIDES: Record<string, BeginnerGuide> = {
       { eyebrow: "HOW WINNING WORKS", title: "Win immediately by fall—or finish with more points.", body: "Freestyle, Greco-Roman, and folkstyle award actions differently. Greco-Roman does not allow active attacks using the legs; freestyle does." },
     ],
   },
+  bowling: {
+    sourceIds: ["usbc-bowling-basics", "usbc-high-school-guide"],
+    welcome: "Meet the lane, the ten pins, and the goal of every delivery. No bowling knowledge needed.",
+    lessons: [
+      { eyebrow: "THE BIG IDEA", title: "Roll the ball down the lane to knock down ten pins.", body: "A bowler starts on the approach, releases the ball before crossing the foul line, and aims at the pins at the far end. The gutters beside the lane do not count as part of the playing surface." },
+      { eyebrow: "HOW A GAME MOVES", title: "One game has ten frames.", body: "In most frames, a bowler gets up to two deliveries to knock down all ten pins. A strike ends the frame after the first ball. A strike or spare in the tenth frame earns bonus deliveries so its score can be completed." },
+      { eyebrow: "WORDS TO KNOW", title: "Three score words unlock the game.", body: "Learn these before the quick check.", terms: [
+        { term: "Frame", meaning: "One of the ten turns that make up a game." },
+        { term: "Strike", meaning: "Knock down all ten pins with the first delivery of a frame." },
+        { term: "Spare", meaning: "Knock down all ten pins using both deliveries in a frame." },
+      ] },
+      { eyebrow: "SCORING + SAFETY", title: "Bonus pins reward strikes and spares.", body: "A strike scores 10 plus the next two deliveries. A spare scores 10 plus the next delivery. A perfect game is 300. Wait for the pinsetter, keep hands away from the ball return opening, use a ball you can control, and wear bowling shoes on the approach." },
+    ],
+  },
 };
 
 export function beginnerGuideFor(sportId: string) {

@@ -1,12 +1,15 @@
 # RepQuest Product Requirements Document
 
+> Current scope (2026-10-27): [FIVE_SPORT_GAME_PLAN.md](FIVE_SPORT_GAME_PLAN.md) is the controlling specification for five video-free sports, each with ten authored sections. Older catalog, media, and age-depth details below describe retained legacy content, not the new primary course or release approval.
+
+
 **Status:** Living product specification
 
-**Version:** 1.0
+**Version:** 2.0 — five-sport curriculum revision
 
 **Product:** RepQuest web, iOS, and Android
 
-**Primary audience:** Learners age 7 and older; parents/guardians; adult learners
+**Primary audience:** Learners age 6–75, parents/guardians, and adult beginners. Independent early-reader usability is not yet validated.
 
 **Product owner:** Amanda Morgan
 
@@ -32,7 +35,7 @@ Product principles:
 2. Show more and say less, especially for ages 7–9.
 3. A wrong answer is a learning moment, never a punishment.
 4. The next action is visible without scrolling or guessing.
-5. Position IQ opens only after the learner understands the game and its roles.
+5. General IQ and Position/Event IQ are parallel choices; every specialized path teaches the role before testing it.
 6. Youth privacy is a product feature, not a legal afterthought.
 7. Media must depict the correct sport and have verified reuse rights.
 8. The same curriculum and progress model power web, phone, and tablet.
@@ -102,7 +105,7 @@ Every sport follows this guided sequence:
 6. **Position/Event IQ:** Choose a role and learn responsibilities, reads, decisions, and situations.
 7. **Mission result:** See what was learned, receive XP, and get a primary Continue Path action.
 
-The specialized path remains locked until all beginner-path modules are complete. Previously completed users retain credit where module identifiers match; migration rules must never erase earned XP.
+General IQ and each specialized Position/Event IQ path are parallel entry points. The first module in every specialized path is immediately available and contains its own role primer. Later modules unlock in order within that same path. Previously completed users retain credit through explicit module-ID aliases; migration rules must never erase earned XP.
 
 ## 8. Curriculum requirements
 
@@ -159,7 +162,7 @@ Before a learner chooses a specialized path, RepQuest must display each major gr
 
 ## 10. Sports catalog
 
-Launch catalog includes tackle football, flag football, basketball, soccer, volleyball, baseball, softball, ice hockey, lacrosse, rugby, field hockey, water polo, cricket, tennis, track and field, swimming, gymnastics, pickleball, badminton, golf, cycling, mixed martial arts, and wrestling.
+Launch catalog includes tackle football, flag football, basketball, soccer, volleyball, baseball, softball, ice hockey, lacrosse, rugby, field hockey, water polo, cricket, tennis, track and field, swimming, gymnastics, pickleball, badminton, golf, cycling, mixed martial arts, wrestling, and bowling.
 
 Each catalog entry requires curriculum coverage, sport icon, beginner guide, progress identifiers, position/event taxonomy, question review, and verified media before it is marked production-ready.
 
@@ -285,7 +288,7 @@ A sport is release-ready only when:
 
 ### Phase 1 — Beginner foundation
 
-Ship the shared beginner sequence, position/event introduction, visible Start action, WNFC-reference removal, 7–9 simplified interactions, and corrected progress/unlocks. Complete a verified flag-football media asset separately if one is not rights-cleared by code freeze.
+Ship the shared beginner sequence, embedded position/event introductions, visible Start action, league-neutral wording, 7–9 simplified interactions, corrected progress/path access, and a rights-cleared flag-football clip once written permission or a licensed stock purchase is recorded.
 
 ### Phase 2 — Account beta
 
@@ -293,7 +296,7 @@ Add managed authentication, parent/child accounts, consent records, secure sync,
 
 ### Phase 3 — Curriculum depth
 
-Add situational, reads/adjustments, and mastery modules for each position/event; expand diagrams and reviewed short-form media.
+The shared foundation/tactical/mastery architecture now exists for all 152 positions and events. Ages 7–12 receive foundation only, ages 13–15 add tactical reads, and ages 16+ add mastery, counters, risk, and post-rep evaluation. Before any path is labeled reviewed curriculum, a sport-domain reviewer must approve its terminology, ruleset context, ambiguity, and instructional sequence. Diagrams and reviewed short-form media remain an expansion requirement.
 
 ### Phase 4 — Production scale
 
@@ -314,16 +317,18 @@ Add content administration, moderation, fraud controls, analytics dashboards, re
 - Select a verifiable-parental-consent method and legal/privacy counsel.
 - Select production authentication, database, CAPTCHA, and monitoring providers.
 - Decide whether read-aloud uses recorded narration, device text-to-speech, or both.
-- Establish content-review owners and governing-body sources for every sport.
-- Acquire or commission unmistakable, rights-cleared flag-football footage.
+- Assign named sport-domain reviewers and record sign-off for every module. Governing-body source records now exist for every sport, but source registration is not human approval.
+- Obtain written permission for the USA Football flag-football excerpt or purchase a model-released stock replacement before publishing a flag clip.
 - Define XP replay limits and 13+ leaderboard moderation operations.
 
 ## 25. Definition of done for this beta iteration
 
-- No WNFC wording appears in user-facing content or tests.
-- Every sport with positions has a Meet the Positions beginner module before Position IQ unlocks.
+- User-facing tackle-football content stays league-neutral unless a named organization is necessary, current, licensed, and approved.
+- Position/Event IQ is selectable immediately, and each specialized module begins with a role-specific beginner primer.
+- Every age-eligible specialized path exposes real foundation, tactics, and mastery modules rather than placeholder roadmap cards; each later level requires the prior level in that path.
 - Start/Continue is visible near the top of sport screens on web and mobile.
-- Ages 7–9 see no timer, two large answer choices, no initial ordering/multi-select, at most four questions, short explanations, and supportive feedback.
+- Ages 7–9 see no timer, two large answer choices, no initial ordering/multi-select, at most three questions, short explanations, and supportive feedback.
 - Home progress counts all beginner and specialized modules accurately.
 - Flag football displays verified correct footage or an explicit unavailable state; no substitute tackle footage.
 - Web and mobile type checks/builds/tests pass, and this PRD ships with the code.
+- Privacy export/reset/deletion, first-completion-only XP, within-path prerequisite enforcement, and youth-safe measurement follow `PRIVACY_PROGRESS_MEASUREMENT_OPERATIONS.md` on web and mobile.
